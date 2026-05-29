@@ -25,6 +25,30 @@ def evaluate(model, dataset_loader, batch_size=128, throughput_iters=100):
     
     model.eval() # set to evaluation mode
     torch.backends.cudnn.benchmark = True  # optimize GPU execution kernels
+
+    # ! track token sequence length
+    def simple_token_counter(module, input, output):
+        out_tensor = output[0] if isinstance(output, tuple) else output
+        tokens_in = input[0].shape[1]
+        tokens_out = out_tensor.shape[1]
+        print(f"[{module.__class__.__name__}] Tokens: {tokens_in} -> {tokens_out}")
+
+    print("\n--- Tracking Token Sequence Length ---")
+    handles = []
+    
+    # attach hooks
+    for name, module in model.named_modules():
+        if "Block" in str(type(module)): 
+            handles.append(module.register_forward_hook(simple_token_counter))
+
+    # use dummy image to trigger the print statements
+    dummy_img = torch.randn(1, 3, 224, 224).cuda()
+    with torch.no_grad():
+        _ = model(dummy_img)
+
+    for h in handles:
+        h.remove()
+    print("-----------------------------------------------\n")
     
    # ! peak activation memory
     dummy_tensor_pam = torch.randn(batch_size, 3, 224, 224).cuda()
