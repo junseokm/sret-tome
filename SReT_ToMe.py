@@ -179,7 +179,7 @@ class Transformer_Block(nn.Module):
         return safe_r
 
     # * Modified
-    def forward(self, x, size, recursive_index, group_size, target_r): # * added 'size', 'group_size', 'target_r' arguments
+    def forward(self, x, size, recursive_index, group_size, target_r, source=None): # * added 'size', 'group_size', 'target_r', 'source' arguments
         b, n, c = x.shape # * get batch size, sequence length, and dimensions of x (b,n,c)
         safe_r = self.get_r(n, target_r, group_size) # * get 'safe_r' using given arguments
         
@@ -189,6 +189,10 @@ class Transformer_Block(nn.Module):
         if safe_r > 0:
             # * apply ToMe if token merging is requested
             merge_func, unmerge_func = merge.bipartite_soft_matching(k_matrix, safe_r) # * use the 'Key' matrix to get the merge and unmerge functions
+            
+            # * update the visual trace matrix
+            if source is not None:
+                source = merge_func(source, mode="amax")
 
             # * pre weight the features by their tracked mass
             x_weighted = x * size
@@ -206,7 +210,7 @@ class Transformer_Block(nn.Module):
             unmerge_func = lambda tensor: tensor
 
         x = self.coefficient3(x) + self.coefficient4(self.drop_path(self.mlp(self.norm2(x))))
-        return x, size, unmerge_func # * also return the 'size' tensor and 'unmerge' function
+        return x, size, unmerge_func, source  # * also return the 'size' tensor, 'unmerge' function, and 'source' matrix
     
 # * Modified
 class Transformer(nn.Module):
@@ -279,7 +283,7 @@ class Transformer(nn.Module):
         return schedule
 
     # * Modified
-    def forward(self, x):
+    def forward(self, x, trace_source=False): # * add 'trace_source' argument
         h, w = x.shape[2:4]
         x = rearrange(x, 'b c h w -> b (h w) c')
         unmerge_stack = [] # * initialize the unmerge stack used to match tensor shapes for the convlutional pooling layer in between stages
@@ -288,6 +292,12 @@ class Transformer(nn.Module):
         size = torch.ones(x.shape[0], x.shape[1], 1, device=x.device, dtype=x.dtype)
         # * compute the LCM of the number of groups within the stage to achieve safe token reduction within the block
         stage_lcm = math.lcm(self.group1, self.group2)
+
+        # * create the N x N tracking matrix
+        if trace_source:
+            source = torch.eye(x.shape[1], device=x.device, dtype=x.dtype).unsqueeze(0).expand(x.shape[0], -1, -1)
+        else:
+            source = None
 
         # * apply the reduction schedule
         if self.constant_r is not None:
@@ -311,7 +321,8 @@ class Transformer(nn.Module):
                 
                 target_r = r_schedule[transfomer_idx] # * get the corresponding 'target_r' for the block index
 
-                x, size, unmerge_func = blk(x, size, recursive_index, stage_lcm, target_r) # * run the transformer block
+                # * pass and receive the 'source' variable
+                x, size, unmerge_func, source = blk(x, size, recursive_index, stage_lcm, target_r, source=source) # * run the transformer block
 
                 unmerge_stack.append(unmerge_func) # * store the unmerge functions
 
@@ -320,6 +331,10 @@ class Transformer(nn.Module):
             else:
                 # * pass through normally for non-transformer blocks
                 x = blk(x, recursive_index=False)
+
+        # * save final state before restoring grid
+        if trace_source:
+            self._tome_info = {"source": source}
 
         # * restore original tensor size just for the convolution pooling layer by applying the stored 'unmerge' functions in reverse
         for unmerge_func in reversed(unmerge_stack):
