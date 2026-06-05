@@ -2,14 +2,13 @@
 # Orthogonal Compression for Edge Vision Transformers: Combining Recursive Weight-Sharing with Token Merging
 #
 # Author: Junseo Kim (UTwente)
-# Implementation Date: May 2026
 # ==============================================================================
 # This implementation integrates Token Merging (ToMe) into the Sliced Recursive Transformer (SReT) architecture
 # to optimize parameter storage, peak activation memory, and throughput.
 #
 # Upstream Attributions & Core Components:
-#   - SReT (Sliced Recursive Transformer): https://arxiv.org/abs/2111.05297
-#     By Zhiqiang Shen (CMU & MBZUAI)
+#   - ToMe (Token Merging): Meta AI (CC BY-NC 4.0)
+#   - SReT (Sliced Recursive Transformer): Zhiqiang Shen (MIT)
 #   - PiT (Spatial Dimensions of Vision Transformers): NAVER Corp (Apache-2.0)
 #   - PyTorch Image Models (timm): Ross Wightman (Apache-2.0)
 # ==============================================================================
@@ -187,30 +186,32 @@ class Transformer_Block(nn.Module):
         x = self.coefficient1(x) + self.coefficient2(self.drop_path(attn_out))
 
         if safe_r > 0:
-            # * apply ToMe if token merging is requested
             merge_func, unmerge_func = merge.bipartite_soft_matching(k_matrix, safe_r) # * use the 'Key' matrix to get the merge and unmerge functions
-            
-            # * update the visual trace matrix
-            if source is not None:
-                source = merge_func(source, mode="amax")
-
-            # * pre weight the features by their tracked mass
-            x_weighted = x * size
-            
-            # * sum the features to compute the weighted average
-            x_summed = merge_func(x_weighted, mode="sum")
-
-            # * sum the 'size' tensor to track merged token mass for downstream blocks
-            size = merge_func(size, mode="sum")
-            
-            # * divide by the tracked mass to compute the weighted average
-            x = x_summed / size
         else:
-            # * if no merging required, return dummy unmerge
-            unmerge_func = lambda tensor: tensor
+            def placeholder(tensor, mode=None):
+                return tensor
+            merge_func = placeholder
+            unmerge_func = placeholder
+
+        # * update the visual trace matrix
+        if source is not None:
+            source = merge_func(source, mode="amax")
+
+        # * pre weight the features by their tracked mass
+        x_weighted = x * size
+        
+        # * sum the features to compute the weighted average
+        x_summed = merge_func(x_weighted, mode="sum")
+
+        # * sum the 'size' tensor to track merged token mass for downstream blocks
+        size = merge_func(size, mode="sum")
+        
+        # * divide by the tracked mass to compute the weighted average
+        x = x_summed / size
 
         x = self.coefficient3(x) + self.coefficient4(self.drop_path(self.mlp(self.norm2(x))))
-        return x, size, unmerge_func, source  # * also return the 'size' tensor, 'unmerge' function, and 'source' matrix
+        return x, size, unmerge_func, source # * also return the 'size' tensor, 'unmerge' function, and 'source' matrix
+
     
 # * Modified
 class Transformer(nn.Module):
