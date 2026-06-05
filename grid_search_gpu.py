@@ -1,5 +1,5 @@
 # ==============================================================================
-# SReT-ToMe Hyperparameter Optimization Grid Search
+# SReT-ToMe Parameter Optimization Grid Search (GPU)
 #
 # Author: Junseo Kim (UTwente)
 # ==============================================================================
@@ -11,11 +11,11 @@ import itertools
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from SReT_ToMe import SReT_T_distill
-from eval import evaluate 
+from eval_gpu import evaluate 
 
-def grid_search(dataset_loader, csv_path="grid_search.csv"):
+def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
     """
-    Performs a grid search using the 'initial_r_ratio' and 'alpha' values of the decaying token merging schedule on the SReT + ToMe architecture.
+    Performs a grid search using the 'initial_r_ratio' and 'alpha' values of the decaying token merging schedule on the SReT + ToMe architecture on a GPU.
 
     Args:
         dataset_loader: the ImageNet DataLoader of PyTorch.
@@ -30,7 +30,9 @@ def grid_search(dataset_loader, csv_path="grid_search.csv"):
     columns = [
         "initial_r_ratio", "alpha", "accuracy", "params_M", "flops_G",
         "throughput_bs128", "throughput_bs64", "throughput_bs32", 
-        "throughput_bs16", "throughput_bs1", "activation_mem_MB"
+        "throughput_bs16", "throughput_bs1", 
+        "activation_mem_bs128", "activation_mem_bs64", "activation_mem_bs32",
+        "activation_mem_bs16", "activation_mem_bs1"
     ]
     
     with open(csv_path, mode="w", newline="") as f:
@@ -43,14 +45,15 @@ def grid_search(dataset_loader, csv_path="grid_search.csv"):
     checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
     baseline_model.load_state_dict(checkpoint['model'])
     baseline_model = baseline_model.cuda().eval()
-    base_metrics = evaluate(baseline_model, dataset_loader, batch_size=128)
+    base_metrics = evaluate(baseline_model, dataset_loader)
     
-    # store baseline results
     with open(csv_path, mode="a", newline="") as f:
         csv.writer(f).writerow([
             0.0, 1.0, base_metrics["accuracy"], base_metrics["params_M"], base_metrics["flops_G"],
             base_metrics["throughput_bs128"], base_metrics["throughput_bs64"], base_metrics["throughput_bs32"],
-            base_metrics["throughput_bs16"], base_metrics["throughput_bs1"], base_metrics["activation_mem_MB"]
+            base_metrics["throughput_bs16"], base_metrics["throughput_bs1"], 
+            base_metrics["activation_mem_bs128"], base_metrics["activation_mem_bs64"], base_metrics["activation_mem_bs32"],
+            base_metrics["activation_mem_bs16"], base_metrics["activation_mem_bs1"]
         ])
     
     # clear variable and refresh garbage collector and cache
@@ -69,7 +72,7 @@ def grid_search(dataset_loader, csv_path="grid_search.csv"):
         model = model.cuda().eval()
         
         try:
-            res = evaluate(model, dataset_loader, batch_size=128)
+            res = evaluate(model, dataset_loader)
             
             # add results
             with open(csv_path, mode="a", newline="") as f:
@@ -77,14 +80,23 @@ def grid_search(dataset_loader, csv_path="grid_search.csv"):
                 writer.writerow([
                     r_ratio, alpha, res["accuracy"], res["params_M"], res["flops_G"],
                     res["throughput_bs128"], res["throughput_bs64"], res["throughput_bs32"],
-                    res["throughput_bs16"], res["throughput_bs1"], res["activation_mem_MB"]
+                    res["throughput_bs16"], res["throughput_bs1"], 
+                    res["activation_mem_bs128"], res["activation_mem_bs64"], res["activation_mem_bs32"], 
+                    res["activation_mem_bs16"], res["activation_mem_bs1"]  
                 ])
                 
             print(f"-- Success! Trial {idx + 1} logged.")
             
         except Exception as e:
-            # catch any exceptions during grid search execution
+            # catch hardware execution exceptions/crashes 
             print(f"-- [WARNING] Trial {idx + 1} failed execution: {e}")
+            with open(csv_path, mode="a", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    r_ratio, alpha, "FAILED", "FAILED", "FAILED",
+                    "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", 
+                    "FAILED", "FAILED", "FAILED", "FAILED", "FAILED"
+                ])
             
         finally:
             del model
@@ -94,13 +106,13 @@ def grid_search(dataset_loader, csv_path="grid_search.csv"):
     print(f"\n>>> Grid search completed successfully. Results saved to {csv_path}.")
 
 if __name__ == "__main__": 
-    dataset_dir = '/media/datasets/imagenet/val' # path to imagenet dataset
+    dataset_dir = '/media/datasets/imagenet/val' # ! path to imagenet dataset
     dataset_transform = transforms.Compose([
         transforms.Resize(256), 
         transforms.CenterCrop(224), 
         transforms.ToTensor(), 
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ]) # standard normalization parameters for imagenet models
+    ]) # ! standard normalization parameters for imagenet models
     dataset = datasets.ImageFolder(dataset_dir, transform=dataset_transform)
     dataset_loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=False, num_workers=4, pin_memory=True)
-    grid_search(dataset_loader) # run grid search
+    grid_search(dataset_loader) # ! run grid search
