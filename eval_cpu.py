@@ -5,12 +5,18 @@
 # ==============================================================================
 
 import os
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="torch.profiler")
+os.environ["TORCH_CPP_LOG_LEVEL"] = "FATAL" 
+os.environ["GLOG_minloglevel"] = "3"
+
 import gc
 import torch
-import psutil
 import platform
 import numpy as np
 import argparse
+import multiprocessing as mp
+from torch.profiler import profile, ProfilerActivity
 
 from SReT import SReT_T_distill
 import SReT_ToMe
@@ -19,33 +25,84 @@ import timm
 
 import utilities.perf_monitor as pm
 
-def evaluate(model, category_label="CPU", operation_label="evaluation", operation_id=0, event_id=0):
+def isolated_worker(model_name, r, alpha, r_ratio, q):
     """
-    Evaluates a model on Latency, Throughput, and Peak Activation Memory on a CPU.
-    Batch size and number of threads are set to 1.
+    Spawns a new process to measure peak memory and dies.
 
     Args:
-        model: the model to evaluate.
-    
-    Returns:
-        dict: a dictionary of name and values of the evaluated metrics.
+        model_name: the name of the model to evaluate.
+        r: token merge count for regular ToMe.
+        alpha: alpha value for dynamic reduction.
+        r_ratio: initial_r_ratio value for dynamic reduction.
+        q: queue for storing the result dictionary. 
     """
+    # ! force strict thread constraints
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    try:
+        torch.set_num_threads(1)
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        pass # ignore if the parent process already locked the threads
+    
+    cpu_arch = platform.machine().upper()
+    is_arm = "ARM" in cpu_arch or "AARCH" in cpu_arch
+    if not is_arm:
+        torch.backends.mkldnn.enabled = True
 
-    model.eval() 
-    process = psutil.Process(os.getpid())
+    # ! instantiate the specific model 
+    if model_name == "deit":
+        model = timm.create_model("deit_tiny_distilled_patch16_224", pretrained=True)
+    elif model_name == "deit+tome":
+        model = timm.create_model("deit_tiny_distilled_patch16_224", pretrained=True)
+        tome.patch.timm(model, prop_attn=True)
+        model.r = r
+    elif model_name == "pit":
+        model = timm.create_model("pit_ti_distilled_224", pretrained=True)
+    elif model_name == "sret":
+        model = SReT_T_distill(pretrained=False)
+        checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+        model.load_state_dict(checkpoint['model'])
+    elif model_name == "sret+tome":
+        model = SReT_ToMe.SReT_T_distill(pretrained=False, constant_r=r)
+        checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+        model.load_state_dict(checkpoint['model'])
+    elif model_name == "sret+tome+d":
+        model = SReT_ToMe.SReT_T_distill(pretrained=False, initial_r_ratio=r_ratio, alpha=alpha)
+        checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+        model.load_state_dict(checkpoint['model'])
+    else:
+        raise ValueError(f"Unknown model: {model_name}")
+
+    model.eval()
 
     # ! peak activation memory
-    gc.collect()
-    base_memory_bytes = process.memory_info().rss 
-    
     dummy_tensor_pam = torch.randn(1, 3, 224, 224)
+    
+    # warm up CPU cache
     with torch.no_grad():
-        _ = model(dummy_tensor_pam)
-    
+        for _ in range(3):
+            _ = model(dummy_tensor_pam)
     gc.collect()
-    peak_memory_bytes = process.memory_info().rss
+
+    # PyTorch profiling
+    with profile(activities=[ProfilerActivity.CPU], profile_memory=True) as prof:
+        with torch.no_grad():
+            _ = model(dummy_tensor_pam)
+            
+    # get pam
+    current_mem_bytes = 0
+    peak_mem_bytes = 0
     
-    activations_memory_MB = max(0.0, (peak_memory_bytes - base_memory_bytes) / (1024**2))
+    for event in prof.events():
+        current_mem_bytes += event.cpu_memory_usage
+
+        # prevent negative memory
+        current_mem_bytes = max(0, current_mem_bytes)
+
+        if current_mem_bytes > peak_mem_bytes:
+            peak_mem_bytes = current_mem_bytes
+            
+    activations_memory_MB = peak_mem_bytes / (1024.0 ** 2)
     
     del dummy_tensor_pam
     gc.collect()
@@ -54,28 +111,17 @@ def evaluate(model, category_label="CPU", operation_label="evaluation", operatio
     latencies_MS = []
     dummy_tensor_tp = torch.randn(1, 3, 224, 224)
 
-    # warm up the CPU cache
     with torch.no_grad():
+        # warm up the CPU cache
         for _ in range(10):
             _ = model(dummy_tensor_tp)
 
-    # calculate cpu time
-    with torch.no_grad(): 
-        for _ in range(100): # run 100 iterations to get the average
+        # calculate cpu time
+        for _ in range(100):
             start_snapshot = pm.capture_performance()
             _ = model(dummy_tensor_tp)
             end_snapshot = pm.capture_performance()
 
-            pm.record_performance_stats(
-                start_snapshot=start_snapshot,
-                end_snapshot=end_snapshot,
-                num_cores=1, 
-                category_label=category_label,
-                operation_label=operation_label,
-                operation_id=operation_id,
-                event_id=event_id
-            )
-            
             delta_ms = (end_snapshot.perf_time_ns - start_snapshot.perf_time_ns) / 1_000_000.0
             latencies_MS.append(delta_ms)
 
@@ -83,23 +129,50 @@ def evaluate(model, category_label="CPU", operation_label="evaluation", operatio
     median_latency_MS = np.median(latencies_MS)
     simulated_throughput = (1 / (median_latency_MS / 1000.0))
 
-    del dummy_tensor_tp
-    gc.collect()
+    q.put({
+        'latency': median_latency_MS,
+        'throughput': simulated_throughput,
+        'activation_ram_MB': activations_memory_MB
+    })
 
-    # ! results
+
+def evaluate(model_name, r=0, alpha=0.10, r_ratio=0.30):
+    """
+    Main thread manager. Spawns the worker, waits for it to finish, and extracts results.
+
+    Args:
+        model_name: the name of the model to evaluate.
+        r: token merge count for regular ToMe.
+        alpha: alpha value for dynamic reduction.
+        r_ratio: initial_r_ratio value for dynamic reduction.
+    """
+    q = mp.Queue()
+    
+    # spawn the isolated process
+    p = mp.Process(target=isolated_worker, args=(model_name, r, alpha, r_ratio, q))
+    p.start()
+    p.join() # wait for the process to finish and die
+    
+    # extract the result dictionary from the queue
+    results = {}
+    if not q.empty():
+        results = q.get()
+    
+    # extract metrics (default to -1 if it crashed)
+    lat = results.get('latency', -1)
+    tp = results.get('throughput', -1)
+    mem = results.get('activation_ram_MB', -1)
+
     print("==================================================")
     print(f"{'Target Batch Size:':<32}{1:>18}")
     print("--------------------------------------------------")
-    print(f"{'Latency:':<32}{f'{median_latency_MS:.2f} ms':>18}")
-    print(f"{'Throughput:':<32}{f'{simulated_throughput:.2f} img/sec':>18}")
-    print(f"{'Peak Activation RAM:':<32}{f'{activations_memory_MB:.2f} MB':>18}")
+    print(f"{'Latency:':<32}{f'{lat:.2f} ms':>18}")
+    print(f"{'Throughput:':<32}{f'{tp:.2f} img/sec':>18}")
+    print(f"{'True Peak Activation RAM:':<32}{f'{mem:.2f} MB':>18}")
     print("==================================================\n")
+    
+    return results
 
-    return {
-        "latency": median_latency_MS,
-        "throughput": simulated_throughput,
-        "activation_ram_MB": activations_memory_MB,
-    }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CPU Evaluation Script")
@@ -108,65 +181,36 @@ if __name__ == "__main__":
     parser.add_argument("--r-ratio", type=float, default=0.30, help="Initial token reduction percentage capability (default: 0.30)")
     args = parser.parse_args()
 
-    # architecture initialization
-    os.environ["CUDA_VISIBLE_DEVICES"] = ""  # block GPU execution
-    torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
-    
-    cpu_arch = platform.machine().upper()
-    is_arm = "ARM" in cpu_arch or "AARCH" in cpu_arch
-    
     arch_val = platform.machine()
-    cores_val = f"{torch.get_num_threads()} Thread(s)"
-    engine_val = "ARM64 via XNNPACK" if is_arm else "x86 via oneDNN"
-
-    if not is_arm:
-        torch.backends.mkldnn.enabled = True
-
     print("==================================================")
-    print(f"{'Target CPU Architecture:':<32}{arch_val:>18}")
-    print(f"{'Constrained Compute Cores:':<32}{cores_val:>18}")
-    print(f"{'Compilation Engine:':<32}{engine_val:>18}")
+    print(f"{'CPU:':<32}{arch_val:>18}")
     print("==================================================\n")
     
     rates = [0, 10, 15, 20]
+    
     match (args.model):
         case "deit":
             print("--- DeiT Baseline ---")
-            model = timm.create_model("deit_tiny_distilled_patch16_224", pretrained=True)
-            _ = evaluate(model)
+            evaluate("deit")
 
         case "deit+tome":
-            model = timm.create_model("deit_tiny_distilled_patch16_224", pretrained=True)
-            tome.patch.timm(model, prop_attn=True)
             for r in rates:
                 print(f"--- DeiT + ToMe Baseline | r = {r} ---")
-                model.r = r
-                _ = evaluate(model)
+                evaluate("deit+tome", r=r)
 
         case "pit":
             print("--- PiT Baseline ---")
-            model = timm.create_model("pit_ti_distilled_224", pretrained=True)
-            _ = evaluate(model)
+            evaluate("pit")
 
         case "sret":
             print("--- SReT Baseline ---")
-            model = SReT_T_distill(pretrained=False)
-            checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
-            model.load_state_dict(checkpoint['model'])
-            _ = evaluate(model)
+            evaluate("sret")
 
         case "sret+tome":
             for r in rates:
                 print(f"--- SReT + ToMe Constant Reduction Baseline | r = {r} ---")
-                model = SReT_ToMe.SReT_T_distill(pretrained=False, constant_r=r)
-                checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
-                model.load_state_dict(checkpoint['model'])
-                _ = evaluate(model)
+                evaluate("sret+tome", r=r)
 
         case "sret+tome+d":
             print(f"--- SReT + ToMe Dynamic Reduction | initial_r_ratio = {args.r_ratio}, alpha = {args.alpha} ---")
-            model = SReT_ToMe.SReT_T_distill(pretrained=False, initial_r_ratio=args.r_ratio, alpha=args.alpha)
-            checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
-            model.load_state_dict(checkpoint['model'])
-            _ = evaluate(model)
+            evaluate("sret+tome+d", r_ratio=args.r_ratio, alpha=args.alpha)

@@ -5,12 +5,11 @@
 # ==============================================================================
 
 import csv
-import gc
 import os
-import torch
 import platform
 import itertools
-from SReT_ToMe import SReT_T_distill
+import torch
+import multiprocessing as mp
 from eval_cpu import evaluate 
 
 def grid_search(csv_path="grid_search_cpu.csv"):
@@ -36,51 +35,31 @@ def grid_search(csv_path="grid_search_cpu.csv"):
     
     # run baseline
     print("BASELINE")
-    baseline_model = SReT_T_distill(pretrained=False, constant_r=0)
-    checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
-    baseline_model.load_state_dict(checkpoint['model'])
-    baseline_model = baseline_model.eval()
-    
-    base_metrics = evaluate(baseline_model)
+    base_metrics = evaluate("sret")
     
     with open(csv_path, mode="a", newline="") as f:
         csv.writer(f).writerow([
             0.0, 1.0, 
-            base_metrics["latency"], 
-            base_metrics["throughput"], 
-            base_metrics["activation_ram_MB"]
+            base_metrics.get("latency", "FAILED"), 
+            base_metrics.get("throughput", "FAILED"), 
+            base_metrics.get("activation_ram_MB", "FAILED")
         ])
-    
-    # clear variable and refresh garbage collector
-    del baseline_model
-    gc.collect()
 
     # iterate through the grid
     total_trials = len(search_space)
     for idx, (r_ratio, alpha) in enumerate(search_space):
         print(f" TRIAL {idx + 1} / {total_trials}: Ratio={r_ratio}, Alpha={alpha}")
         
-        model = SReT_T_distill(pretrained=False, initial_r_ratio=r_ratio, alpha=alpha)
-        checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
-        model.load_state_dict(checkpoint['model'])
-        model = model.eval()
-        
-        unique_op_id = int((r_ratio * 1000) + (alpha * 10))
-        
         try:
-            res = evaluate(
-                model, 
-                operation_label=f"r_{r_ratio}_a_{alpha}",
-                operation_id=unique_op_id
-            )
+            res = evaluate("sret+tome+d", r_ratio=r_ratio, alpha=alpha)
             
             with open(csv_path, mode="a", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow([
                     r_ratio, alpha, 
-                    res["latency"], 
-                    res["throughput"], 
-                    res["activation_ram_MB"]
+                    res.get("latency", "FAILED"), 
+                    res.get("throughput", "FAILED"), 
+                    res.get("activation_ram_MB", "FAILED")
                 ])
                 
             print(f"-- Success! Trial {idx + 1} logged.")
@@ -92,13 +71,11 @@ def grid_search(csv_path="grid_search_cpu.csv"):
                 writer = csv.writer(f)
                 writer.writerow([r_ratio, alpha, "FAILED", "FAILED", "FAILED"])
             
-        finally:
-            del model
-            gc.collect()
-            
     print(f"\n>>> CPU Grid search completed successfully. Results saved to {csv_path}.")
 
 if __name__ == "__main__": 
+    mp.set_start_method('spawn', force=True)
+
     os.environ["CUDA_VISIBLE_DEVICES"] = ""  # block GPU access
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
@@ -109,9 +86,6 @@ if __name__ == "__main__":
     arch_val = platform.machine()
     cores_val = f"{torch.get_num_threads()} Thread(s)"
     engine_val = "ARM64 via XNNPACK" if is_arm else "x86 via oneDNN"
-
-    if not is_arm:
-        torch.backends.mkldnn.enabled = False
 
     print("==================================================")
     print(f"{'Target CPU Architecture:':<32}{arch_val:>18}")
