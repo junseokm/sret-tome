@@ -27,6 +27,14 @@ Python 3.10
 ├── requirements.txt     # Environment
 ```
 
+## Usage
+
+`python <eval_gpu.py | eval_cpu.py> <model_name> [--r-ratio <float>] [--alpha <float>]`
+* `<eval_gpu.py | eval_cpu.py>`: The execution environment. **Required.**
+* `<model_name>`: The architecture to evaluate (`deit`, `deit+tome`, `pit`, `sret`, `sret+tome`, `sret+tome+d`) **Required.**
+* `--r-ratio`: Initial reduction percentage for dynamic reduction *Optional (Default: 0.30)*
+* `--alpha`: Decay rate for dynamic reduction. *Optional (Default: 0.10).*
+
 ## Code Acknowledgments & Licenses
 
 * ToMe (Token Merging): Meta AI (CC BY-NC 4.0)
