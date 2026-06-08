@@ -189,7 +189,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     assert torch.cuda.is_available(), "CUDA environment unavailable. This script must execute on a valid GPU."
-    print(f"Evaluation device: {torch.cuda.get_device_name(0)}")
+
+    print("==================================================")
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
+    print("==================================================\n")
 
     dataset_dir = '/media/datasets/imagenet/val' # ! path to imagenet dataset
     dataset_transform = transforms.Compose([
