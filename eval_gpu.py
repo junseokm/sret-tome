@@ -14,6 +14,7 @@ from thop import profile
 
 from SReT import SReT_T_distill
 import SReT_ToMe
+import PiT_ToMe
 import tome
 import timm
 
@@ -183,7 +184,7 @@ def evaluate(model, dataset_loader):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GPU Evaluation Script")
-    parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome", "pit", "sret", "sret+tome", "sret+tome+d"], help="Model selection (default: deit)")
+    parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome", "pit", "pit+tome", "pit+tome+d", "sret", "sret+tome", "sret+tome+d"], help="Model selection (default: deit)")
     parser.add_argument("--alpha", type=float, default=0.10, help="Exponential token decay rate schedule modifier (default: 0.10)")
     parser.add_argument("--r-ratio", type=float, default=0.30, help="Initial token reduction percentage capability (default: 0.30)")
     args = parser.parse_args()
@@ -225,6 +226,19 @@ if __name__ == "__main__":
         case "pit":
             print("--- PiT Baseline ---")
             model = timm.create_model("pit_ti_distilled_224", pretrained=True)
+            model = model.cuda().eval()
+            _ = evaluate(model, dataset_loader)
+
+        case "pit+tome":
+            for r in rates:
+                print(f"--- PiT + ToMe Constant Reduction Baseline | r = {r} ---")
+                model = PiT_ToMe.pit_ti_distilled(pretrained=True, constant_r=r)
+                model = model.cuda().eval()
+                _ = evaluate(model, dataset_loader)
+
+        case "pit+tome+d":
+            print(f"--- PiT + ToMe Dynamic Reduction | initial_r_ratio = {args.r_ratio}, alpha = {args.alpha} ---")
+            model = PiT_ToMe.pit_ti_distilled(pretrained=True, initial_r_ratio=args.r_ratio, alpha=args.alpha)
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)
 
