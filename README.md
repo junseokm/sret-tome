@@ -11,7 +11,8 @@ University of Twente TCS Bachelor Research Project
 ├── tome/                # Token Merging (ToMe) modules     
 ├── utilities/           # CPU Performance Monitor script            
 ├── weights/             # Pre-trained model checkpoints
-├── SReT_ToMe.py         # Main module integrating SReT and ToMe
+├── PiT_ToMe.py          # PiT+ToMe integration module
+├── SReT_ToMe.py         # SReT+ToMe integration module
 ├── SReT.py              # Original SReT 
 ├── eval_cpu.py          # Benchmarking script for CPU environments
 ├── eval_gpu.py          # Benchmarking script for GPU environments
@@ -49,4 +50,5 @@ CUDA 13.0<br>
 
 * ToMe (Token Merging): Meta AI (CC BY-NC 4.0)
 * SReT (Sliced Recursive Transformer): Zhiqiang Shen (MIT)
+* PiT (Pooling-based Vision Transformer): Naver AI (Apache-2.0)
 * PyTorch Image Models (timm): Ross Wightman (Apache-2.0)
