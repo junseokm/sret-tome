@@ -35,6 +35,8 @@ CUDA 13.0<br>
 **GPU:** NVIDIA RTX 4060 Ti<br>
 **CPU:** Intel Core Ultra 9 285K<br>
 
+Requires the official validation set of the ImageNet-1K (ILSVRC 2012) dataset. Path variable `dataset_dir` needs to be updated across scripts. 
+
 `conda env create -f environment.yml`<br>
 `conda activate sret-tome-env`<br>
 
@@ -146,3 +148,4 @@ True Peak Activation RAM:                 75.53 MB
 * SReT (Sliced Recursive Transformer): Zhiqiang Shen (MIT)
 * PiT (Pooling-based Vision Transformer): Naver AI (Apache-2.0)
 * PyTorch Image Models (timm): Ross Wightman (Apache-2.0)
+* ImageNet-1K (Image Classification Dataset): Stanford Vision Lab (Custom Non-Commercial)
