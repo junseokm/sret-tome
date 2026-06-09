@@ -5,7 +5,7 @@
 # ==============================================================================
 # This implementation integrates Token Merging (ToMe) into the Sliced Recursive Transformer (SReT) architecture.
 #
-# Upstream Attributions & Core Components:
+# Code Acknowledgments & Licenses:
 #   - ToMe (Token Merging): Meta AI (CC BY-NC 4.0)
 #   - SReT (Sliced Recursive Transformer): Zhiqiang Shen (MIT)
 #   - PiT (Pooling-based Vision Transformer): NAVER AI (Apache-2.0)
