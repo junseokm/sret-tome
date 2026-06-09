@@ -117,7 +117,7 @@ def isolated_worker(model_name, r, alpha, r_ratio, q):
 
     with torch.no_grad():
         # warm up the CPU cache
-        for _ in range(10):
+        for _ in range(50):
             _ = model(dummy_tensor_tp)
 
         # calculate cpu time
