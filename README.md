@@ -41,16 +41,17 @@ CUDA 13.0<br>
 ## Usage
 
 `python <eval_gpu.py | eval_cpu.py> <model_name> [--r-ratio <float>] [--alpha <float>]`
-* `<eval_gpu.py | eval_cpu.py>`: The execution environment. **Required.**
-* `<model_name>`: The architecture to evaluate (`deit`, `deit+tome`, `pit`, `pit+tome`, `pit+tome+d`, `sret`, `sret+tome`, `sret+tome+d`) **Required.**
-* `--r-ratio`: Initial reduction percentage for dynamic reduction *Optional (Default: 0.30)*
-* `--alpha`: Decay rate for dynamic reduction. *Optional (Default: 0.10).*
+* `<eval_gpu.py | eval_cpu.py>`: The execution environment **Required**
+* `<model_name>`: The model to evaluate (`deit`, `deit+tome`, `pit`, `pit+tome`, `pit+tome+d`, `sret`, `sret+tome`, `sret+tome+d`) **Required**
+* `--r-ratio`: Initial reduction percentage for dynamic reduction **Optional (Default: 0.30)**
+* `--alpha`: Decay rate for dynamic reduction **Optional (Default: 0.10)**
 
 ## Examples
-
+DeiT Baseline GPU Evaluation:
 ```bash
 python eval_gpu.py deit
-
+```
+```bash
 ==================================================
 GPU: NVIDIA GeForce RTX 4060 Ti
 ==================================================
@@ -74,10 +75,11 @@ Peak Activation Memory (BS=16):           28.59 MB
 Peak Activation Memory (BS=1):             1.76 MB
 ==================================================
 ```
-
+DeiT Baseline CPU Evaluation:
 ```bash
 python eval_cpu.py deit
-
+```
+```bash
 ==================================================
 CPU:                                        x86_64
 ==================================================
@@ -91,10 +93,11 @@ Throughput:                          48.55 img/sec
 True Peak Activation RAM:                 42.59 MB
 ==================================================
 ```
-
+SReT+ToMe Dynamic Reduction (r-ratio=0.25, alpha=0.2) GPU Evaluation:
 ```bash
 python eval_gpu.py sret+tome+d --r-ratio 0.25 --alpha 0.2
-
+```
+```bash
 ==================================================
 GPU: NVIDIA GeForce RTX 4060 Ti
 ==================================================
@@ -118,10 +121,11 @@ Peak Activation Memory (BS=16):           62.34 MB
 Peak Activation Memory (BS=1):             3.90 MB
 ==================================================
 ```
-
+SReT+ToMe Dynamic Reduction (r-ratio=0.25, alpha=0.2) CPU Evaluation:
 ```bash
 python eval_cpu.py sret+tome+d --r-ratio 0.25 --alpha 0.2
-
+```
+```bash
 ==================================================
 CPU:                                        x86_64
 ==================================================
