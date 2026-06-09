@@ -2,8 +2,6 @@
 
 University of Twente TCS Bachelor Research Project
 
-Python 3.10
-
 ## Repository Structure
 
 ```
@@ -24,8 +22,20 @@ Python 3.10
 ├── results.ipynb        # Notebook with baseline evaluation results
 ├── visuals.ipynb        # Notebook for token merging visualization
 ├── plots.ipynb          # Notebook for plot generation
-├── requirements.txt     # Environment
+├── requirements.txt     # Python requirements
+├── environment.yml      # Environment
 ```
+
+## Setup
+
+Python 3.10<br>
+CUDA 13.0<br>
+
+**GPU:** NVIDIA RTX 4060 Ti<br>
+**CPU:** Intel Core Ultra 9 285K<br>
+
+`conda env create -f environment.yml`<br>
+`conda activate sret-tome-env`<br>
 
 ## Usage
 
