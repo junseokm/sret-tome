@@ -5,6 +5,10 @@
 # ==============================================================================
 
 import os
+# stabilize startup behavior of C++ libraries
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" 
+os.environ["DNNL_PRIMITIVE_CACHE_CAPACITY"] = "0"
+
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="torch.profiler")
 os.environ["TORCH_CPP_LOG_LEVEL"] = "FATAL" 
