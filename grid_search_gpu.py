@@ -24,7 +24,7 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
    
     # values to explore
     initial_r_ratios = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
-    alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    alphas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     search_space = list(itertools.product(initial_r_ratios, alphas))
     
     columns = [
