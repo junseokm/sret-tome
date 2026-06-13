@@ -22,7 +22,7 @@ from timm.models.layers import trunc_normal_
 from timm.models.layers import DropPath, to_2tuple, lecun_normal_
 from timm.models.registry import register_model
 
-# * Added import
+# * Added
 from tome import merge
 
 class LearnableCoefficient(nn.Module):
@@ -84,7 +84,7 @@ class Group_Attention(nn.Module):
         self.proj_drop = nn.Dropout(proj_drop)
 
     # * Modified
-    def forward(self, x, size, recursive_index): # * added 'size' argument to track merged token mass for porportional attention
+    def forward(self, x, size, recursive_index): # * add 'size' argument to track merged token mass for porportional attention
         B, N, C = x.shape
         if recursive_index == False:
             num_groups = self.num_groups1
@@ -98,10 +98,10 @@ class Group_Attention(nn.Module):
         qkv = self.qkv(x).reshape(B, num_groups, N // num_groups, 3, self.num_heads, C // self.num_heads).permute(3, 0, 1, 4, 2, 5)  
         q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
 
-        # * get the 'Key' matrix by averaging over attention heads to run the ToMe bipartite matching algorithm
-        k_out = k.mean(dim=2).reshape(B, N, -1)
+        # * get the 'Key' matrix by averaging over attention heads just like ToMe
+        k_out = k.mean(dim=2).reshape(B, N, -1) 
 
-        # * reshape the 'size' tensor to match the attention heads (shape: [Batch, Groups, 1 (broadcast heads), 1 (broadcast queries), Tokens Per Group])
+        # * reshape the 'size' tensor to match the attention heads (shape: [batches, groups, 1 (broadcast heads), 1 (broadcast queries), tokens per group])
         size_grouped = size.reshape(B, num_groups, 1, 1, N // num_groups)
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
@@ -115,7 +115,7 @@ class Group_Attention(nn.Module):
         x = x.permute(0, 3, 1, 2).reshape(B, C, N).transpose(1, 2)
         if recursive_index == True and num_groups != 1:
             x = x[:,inverse,:]
-            k_out = k_out[:,inverse,:] # * unscramble the 'Key' matrix also
+            k_out = k_out[:,inverse,:] # * also unscramble the 'Key' matrix
         x = self.proj(x)
         x = self.proj_drop(x)
         return x, k_out # * also return 'Key' matrix
@@ -139,8 +139,8 @@ class Transformer_Block(nn.Module):
         self.coefficient3 = LearnableCoefficient()
         self.coefficient4 = LearnableCoefficient()
 
-    # * add a function to always get a safe value of 'r' (merge rate)
-    def get_r(self, sequence_length, target_r, group_size):
+    # * Added
+    def get_safe_r(self, sequence_length, target_r, group_size_lcm):
         """
         Computes a structurally safe token reduction rate that complies with the divisibility constraints and bipartite partitioning limits.
 
@@ -155,31 +155,27 @@ class Transformer_Block(nn.Module):
         if target_r == 0:
             return 0
             
-        # * the initial target sequence length
-        initial_length = sequence_length - target_r 
-        
-        # * ensure that the sequence length is a clean multiple of 'group_size'
-        safe_length = (initial_length // group_size) * group_size 
-        
-        # * ensure that the sequence length does not fall below the 'group_size' (needs at least 1 token per sliced attention)
-        safe_length = max(safe_length, group_size) 
-        
-        # * compute the 'safe_r' actually needed to achieve a safe sequence length
-        safe_r = sequence_length - safe_length 
-
-        # * safety to ensure that 'r' is not negative
-        safe_r = max(0, safe_r)
+        # * compute the value of 'r' needed to achieve a safe sequence length
+        naive_result_length = sequence_length - target_r 
+        safe_result_length = (naive_result_length // group_size_lcm) * group_size_lcm # * must be clean multiple of 'group_size'
+        safe_result_length = max(safe_result_length, group_size_lcm) # * must not fall below the 'group_size' (needs at least 1 token per sliced attention)
+        safe_r = sequence_length - safe_result_length 
+        safe_r = max(0, safe_r) # * must not be negative
     
-        # * since bipartite soft matching of ToMe divides the tokens into 2 groups before matching, 'r' cannot be more than the number of tokens in any group
-        max_allowable_r = sequence_length // 2
-        safe_r = min(safe_r, max_allowable_r)
+        # * compute the maximum 'r' that can be set (prevent tensor shape collapse)
+        max_allowable_r = sequence_length // 2 # * cannot merge more than half of tokens (ToMe bipartite grouping)
+        min_result_length = sequence_length - max_allowable_r
+        min_result_length = math.ceil(min_result_length / group_size_lcm) * group_size_lcm # * round minimum length UP to be clean multiple of 'group_size'
+        max_allowable_r = sequence_length - min_result_length
         
+        # * return a safe 'r' that does not exceed the allowed limits
+        safe_r = min(safe_r, max_allowable_r)
         return safe_r
 
     # * Modified
-    def forward(self, x, size, recursive_index, group_size, target_r, source=None): # * added 'size', 'group_size', 'target_r', 'source' arguments
+    def forward(self, x, size, recursive_index, group_size, target_r, source=None): # * add 'size', 'group_size', 'target_r', 'source' arguments
         b, n, c = x.shape # * get batch size, sequence length, and dimensions of x (b,n,c)
-        safe_r = self.get_r(n, target_r, group_size) # * get 'safe_r' using given arguments
+        safe_r = self.get_safe_r(n, target_r, group_size) # * get 'safe_r' using given arguments
         
         attn_out, k_matrix = self.attn(self.norm1(x), size, recursive_index) # * apply proportional attention
         x = self.coefficient1(x) + self.coefficient2(self.drop_path(attn_out))
@@ -192,7 +188,7 @@ class Transformer_Block(nn.Module):
             merge_func = placeholder
             unmerge_func = placeholder
 
-        # * update the visual trace matrix
+        # * update the visual trace matrix (only used for merging visualizations)
         if source is not None:
             source = merge_func(source, mode="amax")
 
@@ -215,7 +211,7 @@ class Transformer_Block(nn.Module):
 # * Modified
 class Transformer(nn.Module):
     def __init__(self, base_dim, depth, recursive_num, groups1, groups2, heads, mlp_ratio, np_mlp_ratio,
-                 drop_rate=.0, attn_drop_rate=.0, drop_path_prob=None, initial_r_ratio=0.0, alpha=1.0, constant_r=None): # * add the 'initial_r_ratio', 'alpha', 'constant_r' arguments to also for a variable decaying schedule
+                 drop_rate=.0, attn_drop_rate=.0, drop_path_prob=None): 
         super(Transformer, self).__init__()
         self.layers = nn.ModuleList([])
         embed_dim = base_dim * heads
@@ -257,33 +253,9 @@ class Transformer(nn.Module):
         self.group1 = groups1
         self.group2 = groups2
         self.depth = depth
-        self.initial_r_ratio = initial_r_ratio
-        self.alpha = alpha
-        self.constant_r = constant_r
-    
-    # * add a function to get a decaying schedule as specified in the instance attributes
-    def get_decaying_schedule(self, initial_r, alpha, depth):
-        """
-        Generates an exponentially decaying token reduction schedule.
-        
-        Args:
-            initial_r: The starting number of tokens to merge in the first loop.
-            alpha: The decay rate (between 0 and 1) at every iteration.
-            depth: The total number of recursive loops in the stage.
-            
-        Returns:
-            list: An array of integer 'target_r' values for each loop.
-        """
-        schedule = []
-        
-        for d in range(depth):
-            r_d = int(math.floor(initial_r * (alpha ** d))) # * apply the decaying formula
-            schedule.append(r_d)
-            
-        return schedule
 
     # * Modified
-    def forward(self, x, trace_source=False): # * add 'trace_source' argument
+    def forward(self, x, stage_schedule=None, trace_source=False): # * add 'stage_schedule', 'trace_source'
         h, w = x.shape[2:4]
         x = rearrange(x, 'b c h w -> b (h w) c')
         unmerge_stack = [] # * initialize the unmerge stack used to match tensor shapes for the convlutional pooling layer in between stages
@@ -293,20 +265,15 @@ class Transformer(nn.Module):
         # * compute the LCM of the number of groups within the stage to achieve safe token reduction within the block
         stage_lcm = math.lcm(self.group1, self.group2)
 
-        # * create the N x N tracking matrix
+        # * create the N x N tracking matrix (for merging visualization only)
         if trace_source:
             source = torch.eye(x.shape[1], device=x.device, dtype=x.dtype).unsqueeze(0).expand(x.shape[0], -1, -1)
         else:
             source = None
 
-        # * apply the reduction schedule
-        if self.constant_r is not None:
-            # * constant reduction
-            r_schedule = [self.constant_r] * self.depth
-        else:
-            # * dynamic reduction
-            initial_r = int(x.shape[1] * self.initial_r_ratio) 
-            r_schedule = self.get_decaying_schedule(initial_r=initial_r, alpha=self.alpha, depth=self.depth)
+        # ! track merged token count
+        # total_tokens_merged = 0
+        # actual_schedule = []
 
         transfomer_idx = 0
         for i, blk in enumerate(self.blocks):
@@ -319,8 +286,13 @@ class Transformer(nn.Module):
                 else:
                     recursive_index = False
                 
-                target_r = r_schedule[transfomer_idx] # * get the corresponding 'target_r' for the block index
+                target_r = stage_schedule[transfomer_idx] if stage_schedule else 0 # * get the corresponding 'target_r' for the block index, no merging if not provided
 
+                # ! get safe_r to track tokens
+                # safe_r = blk.get_safe_r(x.shape[1], target_r, stage_lcm)
+                # total_tokens_merged += safe_r
+                # actual_schedule.append(safe_r)
+                
                 # * pass and receive the 'source' variable
                 x, size, unmerge_func, source = blk(x, size, recursive_index, stage_lcm, target_r, source=source) # * run the transformer block
 
@@ -332,7 +304,10 @@ class Transformer(nn.Module):
                 # * pass through normally for non-transformer blocks
                 x = blk(x, recursive_index=False)
 
-        # * save final state before restoring grid
+        # ! for token count info
+        # print(f"Stage completed. Stage Schedule: {stage_schedule} | Actual Stage Schedule: {actual_schedule} | Actual Total Merged: {total_tokens_merged}")
+
+        # * save final state before restoring grid (for merging visualization only)
         if trace_source:
             self._tome_info = {"source": source}
 
@@ -396,7 +371,7 @@ class conv_embedding(nn.Module):
 class SReT(nn.Module):
     def __init__(self, image_size, patch_size, stride, base_dims, depth, recursive_num, groups1, groups2, heads,
                  mlp_ratio, np_mlp_ratio, num_classes=1000, in_chans=3,
-                 attn_drop_rate=.0, drop_rate=.0, drop_path_rate=.1, initial_r_ratio=0.0, alpha=1.0, constant_r=None): # * add the 'initial_r_ratio', 'alpha', 'constant_r' arguments to also for a variable decaying schedule
+                 attn_drop_rate=.0, drop_rate=.0, drop_path_rate=.1, initial_r_ratio=0.0, alpha=1.0, constant_r=None, schedule_type="exponential", total_budget=None): # * add 'initial_r_ratio', 'alpha', 'constant_r', 'schedule_type', 'total_budget' 
         super(SReT, self).__init__()
 
         total_block = sum(depth)
@@ -404,6 +379,21 @@ class SReT(nn.Module):
         block_idx = 0
 
         width = int(image_size/8)
+
+        # * add
+        self.schedule_type = schedule_type
+        self.initial_r_ratio = initial_r_ratio
+        self.alpha = alpha
+        self.constant_r = constant_r
+        self.total_budget = total_budget
+        self.depth_list = depth  # list of depths per stage
+        self.total_layers = sum(depth) 
+
+        # * pre-calculate the global linear schedule across all layers
+        if self.schedule_type == "linear" and self.total_budget is not None:
+            start_r = (2 * self.total_budget) / self.total_layers
+            step = start_r / (self.total_layers - 1) if self.total_layers > 1 else 0
+            self.global_linear_schedule = [int(math.floor(max(0, start_r - (step * d)))) for d in range(self.total_layers)]
 
         self.base_dims = base_dims
         self.heads = heads
@@ -430,7 +420,7 @@ class SReT(nn.Module):
             self.transformers.append(
                 Transformer(base_dims[stage], depth[stage], recursive_num[stage], groups1[stage], groups2[stage], heads[stage],
                             mlp_ratio, np_mlp_ratio, 
-                            drop_rate, attn_drop_rate, drop_path_prob, initial_r_ratio=initial_r_ratio, alpha=alpha, constant_r=constant_r)
+                            drop_rate, attn_drop_rate, drop_path_prob)
             )
             if stage < len(heads) - 1:
                 self.pools.append(
@@ -473,16 +463,46 @@ class SReT(nn.Module):
         else:
             self.head = nn.Identity()
 
+    # * Modified
     def forward_features(self, x):
         x = self.patch_embed(x)
 
         pos_embed = self.pos_embed
         x = self.pos_drop(x + pos_embed)
 
+        global_layer_idx = 0 # * track global position
+
         for stage in range(len(self.pools)):
-            x = self.transformers[stage](x)
+            current_stage_depth = self.depth_list[stage]
+            current_seq_len = x.shape[2] * x.shape[3] # * (H * W), get initial sequence length of stage
+
+            if self.schedule_type == "exponential":
+                initial_r = int(current_seq_len * self.initial_r_ratio)
+                stage_schedule = [int(math.floor(initial_r * (self.alpha ** d))) for d in range(current_stage_depth)]
+                
+            elif self.schedule_type == "linear":
+                stage_schedule = self.global_linear_schedule[global_layer_idx : global_layer_idx + current_stage_depth] # * apply the linear schedule for this stage specifically
+                
+            elif self.schedule_type == "constant":
+                stage_schedule = [self.constant_r for _ in range(current_stage_depth)]
+
+            x = self.transformers[stage](x, stage_schedule=stage_schedule)
             x = self.pools[stage](x)
-        x = self.transformers[-1](x)
+
+            global_layer_idx += current_stage_depth
+
+        # * apply the same code block for the final stage
+        current_stage_depth = self.depth_list[-1]
+        current_seq_len = x.shape[2] * x.shape[3]
+        if self.schedule_type == "exponential":
+            initial_r = int(current_seq_len * self.initial_r_ratio)
+            stage_schedule = [int(math.floor(initial_r * (self.alpha ** d))) for d in range(current_stage_depth)]
+        elif self.schedule_type == "linear":
+            stage_schedule = self.global_linear_schedule[global_layer_idx : global_layer_idx + current_stage_depth]
+        elif self.schedule_type == "constant":
+            stage_schedule = [self.constant_r for _ in range(current_stage_depth)]
+
+        x = self.transformers[-1](x, stage_schedule=stage_schedule)
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)

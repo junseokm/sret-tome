@@ -21,12 +21,12 @@ from timm.models.layers import trunc_normal_
 from timm.models.vision_transformer import Block as transformer_block
 from timm.models.registry import register_model
 
-# * Added imports
+# * Added 
 from tome import merge
 from timm.models.layers import DropPath, Mlp
 
 
-# * Added a custom attention module to track token mass (size) and return K matrix
+# * add a custom attention module to track token mass (size) and return K matrix
 class PiT_Attention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, attn_drop=0., proj_drop=0.):
         super().__init__()
@@ -61,7 +61,7 @@ class PiT_Attention(nn.Module):
         x = self.proj_drop(x)
         return x, k_out
 
-# * Added a custom transformer block to handle ToMe merging logic
+# * add a custom transformer block to handle ToMe merging logic
 class PiT_Transformer_Block(nn.Module):
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, drop=0., attn_drop=0., drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm):
         super().__init__()
@@ -72,21 +72,11 @@ class PiT_Transformer_Block(nn.Module):
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
 
-    # * add safe_r constraint
+    # * Added
     def get_safe_r(self, sequence_length, target_r):
-        """
-        Computes a structurally safe token reduction rate that complies with the divisibility constraints and bipartite partitioning limits.
-
-        Args:
-            sequence_length: The current number of tokens (N) entering the Transformer block.
-            target_r: The requested token reduction target.
-
-        Returns:
-            int: The bounded, grid-aligned number of tokens to safely merge.
-        """
         if target_r == 0:
             return 0
-        # bipartite matching can never merge more than half the available tokens
+        # * bipartite matching can never merge more than half the available tokens
         max_allowable_r = sequence_length // 2
         return min(target_r, max_allowable_r)
 
@@ -127,18 +117,14 @@ class PiT_Transformer_Block(nn.Module):
 # * Modified
 class Transformer(nn.Module):
     def __init__(self, base_dim, depth, heads, mlp_ratio,
-                 drop_rate=.0, attn_drop_rate=.0, drop_path_prob=None,
-                 initial_r_ratio=0.0, alpha=1.0, constant_r=None): # * add arguments
+                 drop_rate=.0, attn_drop_rate=.0, drop_path_prob=None):
         super(Transformer, self).__init__()
         self.layers = nn.ModuleList([])
         embed_dim = base_dim * heads
 
         # * set variables
         self.depth = depth
-        self.initial_r_ratio = initial_r_ratio
-        self.alpha = alpha
-        self.constant_r = constant_r
-
+    
         if drop_path_prob is None:
             drop_path_prob = [0.0 for _ in range(depth)]
 
@@ -156,28 +142,8 @@ class Transformer(nn.Module):
             )
             for i in range(depth)])
         
-    # * add a function to get a decaying schedule as specified in the instance attributes
-    def get_decaying_schedule(self, initial_r, alpha, depth):
-        """
-        Generates an exponentially decaying token reduction schedule.
-        
-        Args:
-            initial_r: The starting number of tokens to merge in the first loop.
-            alpha: The decay rate (between 0 and 1) at every iteration.
-            depth: The total number of recursive loops in the stage.
-            
-        Returns:
-            list: An array of integer 'target_r' values for each loop.
-        """
-        schedule = []
-        
-        for d in range(depth):
-            r_d = int(math.floor(initial_r * (alpha ** d))) # * apply the decaying formula
-            schedule.append(r_d)
-            
-        return schedule
-
-    def forward(self, x, cls_tokens):
+    # * Modified
+    def forward(self, x, cls_tokens, stage_schedule=None): # * add argument
         h, w = x.shape[2:4]
         x = rearrange(x, 'b c h w -> b (h w) c')
 
@@ -188,17 +154,8 @@ class Transformer(nn.Module):
         size = torch.ones(x.shape[0], x.shape[1], 1, device=x.device, dtype=x.dtype)
         unmerge_stack = []
 
-        # * dynamic schedule generation based on incoming tokens
-        if self.constant_r is not None:
-            r_schedule = [self.constant_r] * self.depth
-        else:
-            # calculate initial_r based ONLY on the spatial tokens (ignore CLS tokens)
-            spatial_tokens = x.shape[1] - token_length
-            initial_r = int(spatial_tokens * self.initial_r_ratio)
-            r_schedule = self.get_decaying_schedule(initial_r, self.alpha, self.depth)
-
         for i, blk in enumerate(self.blocks):
-            target_r = r_schedule[i]
+            target_r = stage_schedule[i] if stage_schedule else 0 # * get target r from schedule
             x, size, unmerge_func = blk(x, size, target_r, num_cls_tokens=token_length)
             
             if target_r > 0:
@@ -247,11 +204,12 @@ class conv_embedding(nn.Module):
         return x
 
 
+# * Modified
 class PoolingTransformer(nn.Module):
     def __init__(self, image_size, patch_size, stride, base_dims, depth, heads,
                  mlp_ratio, num_classes=1000, in_chans=3,
                  attn_drop_rate=.0, drop_rate=.0, drop_path_rate=.0,
-                 initial_r_ratio=0.0, alpha=1.0, constant_r=None): # * add the 'initial_r_ratio', 'alpha', 'constant_r' arguments
+                 schedule_type="exponential", initial_r_ratio=0.0, alpha=1.0, constant_r=None, total_budget=None): # * add arguments
         super(PoolingTransformer, self).__init__()
 
         total_block = sum(depth)
@@ -260,6 +218,21 @@ class PoolingTransformer(nn.Module):
 
         width = math.floor(
             (image_size + 2 * padding - patch_size) / stride + 1)
+        
+        # * store parameters
+        self.schedule_type = schedule_type
+        self.initial_r_ratio = initial_r_ratio
+        self.alpha = alpha
+        self.constant_r = constant_r
+        self.total_budget = total_budget
+        self.depth_list = depth  
+        self.total_layers = sum(depth)
+
+        # * get global linear schedule
+        if self.schedule_type == "linear" and self.total_budget is not None:
+            start_r = (2 * self.total_budget) / self.total_layers
+            step = start_r / (self.total_layers - 1) if self.total_layers > 1 else 0
+            self.global_linear_schedule = [int(math.floor(max(0, start_r - (step * d)))) for d in range(self.total_layers)]
 
         self.base_dims = base_dims
         self.heads = heads
@@ -282,7 +255,6 @@ class PoolingTransformer(nn.Module):
         self.transformers = nn.ModuleList([])
         self.pools = nn.ModuleList([])
 
-        # * modify stage logic
         for stage in range(len(depth)):
             drop_path_prob = [drop_path_rate * i / total_block
                               for i in range(block_idx, block_idx + depth[stage])]
@@ -291,10 +263,7 @@ class PoolingTransformer(nn.Module):
             self.transformers.append(
                 Transformer(base_dims[stage], depth[stage], heads[stage],
                             mlp_ratio,
-                            drop_rate, attn_drop_rate, drop_path_prob,
-                            initial_r_ratio=initial_r_ratio, 
-                            alpha=alpha,                     
-                            constant_r=constant_r) # * pass down arguments    
+                            drop_rate, attn_drop_rate, drop_path_prob) 
             )
             if stage < len(heads) - 1:
                 self.pools.append(
@@ -336,6 +305,7 @@ class PoolingTransformer(nn.Module):
         else:
             self.head = nn.Identity()
 
+    # * Modified
     def forward_features(self, x):
         x = self.patch_embed(x)
 
@@ -343,11 +313,39 @@ class PoolingTransformer(nn.Module):
         x = self.pos_drop(x + pos_embed)
         cls_tokens = self.cls_token.expand(x.shape[0], -1, -1)
 
-        for stage in range(len(self.pools)):
-            x, cls_tokens = self.transformers[stage](x, cls_tokens)
-            x, cls_tokens = self.pools[stage](x, cls_tokens)
-        x, cls_tokens = self.transformers[-1](x, cls_tokens)
+        global_layer_idx = 0 # * track global position
 
+        for stage in range(len(self.pools)):
+            current_stage_depth = self.depth_list[stage]
+            current_seq_len = x.shape[2] * x.shape[3] # * (H * W) of feature map
+
+            # * add scheduling
+            if self.schedule_type == "exponential":
+                initial_r = int(current_seq_len * self.initial_r_ratio)
+                stage_schedule = [int(math.floor(initial_r * (self.alpha ** d))) for d in range(current_stage_depth)]
+            elif self.schedule_type == "linear":
+                stage_schedule = self.global_linear_schedule[global_layer_idx : global_layer_idx + current_stage_depth]
+            elif self.schedule_type == "constant":
+                stage_schedule = [self.constant_r for _ in range(current_stage_depth)]
+
+            x, cls_tokens = self.transformers[stage](x, cls_tokens, stage_schedule=stage_schedule)
+            x, cls_tokens = self.pools[stage](x, cls_tokens)
+
+            global_layer_idx += current_stage_depth
+
+        # * apply the same scheduling for the final stage
+        current_stage_depth = self.depth_list[-1]
+        current_seq_len = x.shape[2] * x.shape[3]
+        
+        if self.schedule_type == "exponential":
+            initial_r = int(current_seq_len * self.initial_r_ratio)
+            stage_schedule = [int(math.floor(initial_r * (self.alpha ** d))) for d in range(current_stage_depth)]
+        elif self.schedule_type == "linear":
+            stage_schedule = self.global_linear_schedule[global_layer_idx : global_layer_idx + current_stage_depth]
+        elif self.schedule_type == "constant":
+            stage_schedule = [self.constant_r for _ in range(current_stage_depth)]
+
+        x, cls_tokens = self.transformers[-1](x, cls_tokens, stage_schedule=stage_schedule)
         cls_tokens = self.norm(cls_tokens)
 
         return cls_tokens
