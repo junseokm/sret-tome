@@ -4,13 +4,12 @@
 # Author: Junseo Kim (UTwente)
 # ==============================================================================
 
+from eval_cpu import evaluate 
 import csv
-import os
 import platform
 import itertools
 import torch
-import multiprocessing as mp
-from eval_cpu import evaluate 
+import gc
 
 def grid_search(csv_path="grid_search_cpu.csv"):
     """
@@ -21,12 +20,12 @@ def grid_search(csv_path="grid_search_cpu.csv"):
     """
 
     # values to explore
-    initial_r_ratios = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+    initial_r_ratios = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50]
     alphas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     search_space = list(itertools.product(initial_r_ratios, alphas))
     
     columns = [
-        "initial_r_ratio", "alpha", "latency", "throughput", "activation_ram_MB"
+        "initial_r_ratio", "alpha", "latency", "throughput"
     ]
     
     with open(csv_path, mode="w", newline="") as f:
@@ -42,7 +41,6 @@ def grid_search(csv_path="grid_search_cpu.csv"):
             0.0, 1.0, 
             base_metrics.get("latency", "FAILED"), 
             base_metrics.get("throughput", "FAILED"), 
-            base_metrics.get("activation_ram_MB", "FAILED")
         ])
 
     # iterate through the grid
@@ -51,15 +49,14 @@ def grid_search(csv_path="grid_search_cpu.csv"):
         print(f" TRIAL {idx + 1} / {total_trials}: Ratio={r_ratio}, Alpha={alpha}")
         
         try:
-            res = evaluate("sret+tome+d", r_ratio=r_ratio, alpha=alpha)
+            res = evaluate("sret+tome+e", r_ratio=r_ratio, alpha=alpha)
             
             with open(csv_path, mode="a", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow([
                     r_ratio, alpha, 
                     res.get("latency", "FAILED"), 
-                    res.get("throughput", "FAILED"), 
-                    res.get("activation_ram_MB", "FAILED")
+                    res.get("throughput", "FAILED")
                 ])
                 
             print(f"-- Success! Trial {idx + 1} logged.")
@@ -69,23 +66,25 @@ def grid_search(csv_path="grid_search_cpu.csv"):
             print(f"-- [WARNING] Trial {idx + 1} failed execution: {e}")
             with open(csv_path, mode="a", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow([r_ratio, alpha, "FAILED", "FAILED", "FAILED"])
-            
+                writer.writerow([r_ratio, alpha, "FAILED", "FAILED"])
+        
+        gc.collect()
     print(f"\n>>> CPU Grid search completed successfully. Results saved to {csv_path}.")
 
-if __name__ == "__main__": 
-    mp.set_start_method('spawn', force=True)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = ""  # block GPU access
-    torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
-    
+if __name__ == "__main__": 
+    try:
+        torch.set_num_threads(4)
+    except RuntimeError:
+        pass
+
     cpu_arch = platform.machine().upper()
     is_arm = "ARM" in cpu_arch or "AARCH" in cpu_arch
     
     arch_val = platform.machine()
     cores_val = f"{torch.get_num_threads()} Thread(s)"
-    engine_val = "ARM64 via XNNPACK" if is_arm else "x86 via oneDNN"
+    
+    engine_val = "ARM64" if is_arm else "x86"
 
     print("==================================================")
     print(f"{'Target CPU Architecture:':<32}{arch_val:>18}")

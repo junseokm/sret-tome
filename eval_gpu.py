@@ -33,30 +33,6 @@ def evaluate(model, dataset_loader):
     model.eval() # set to evaluation mode
     torch.backends.cudnn.benchmark = True  # optimize GPU execution kernels
     bss = [128, 64, 32, 16, 1] # batch sizes
-
-    # ! track token sequence length
-    # def simple_token_counter(module, input, output):
-    #     out_tensor = output[0] if isinstance(output, tuple) else output
-    #     tokens_in = input[0].shape[1]
-    #     tokens_out = out_tensor.shape[1]
-    #     print(f"[{module.__class__.__name__}] Tokens: {tokens_in} -> {tokens_out}")
-
-    # print("\n--- Tracking Token Sequence Length ---")
-    # handles = []
-    
-    # # attach hooks
-    # for name, module in model.named_modules():
-    #     if "Block" in str(type(module)): 
-    #         handles.append(module.register_forward_hook(simple_token_counter))
-
-    # # use dummy image to trigger the print statements
-    # dummy_img = torch.randn(1, 3, 224, 224).cuda()
-    # with torch.no_grad():
-    #     _ = model(dummy_img)
-
-    # for h in handles:
-    #     h.remove()
-    # print("-----------------------------------------------\n")
     
    # ! peak activation memory
     pams = []
@@ -184,9 +160,11 @@ def evaluate(model, dataset_loader):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GPU Evaluation Script")
-    parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome", "pit", "pit+tome", "pit+tome+d", "sret", "sret+tome", "sret+tome+d"], help="Model selection (default: deit)")
-    parser.add_argument("--alpha", type=float, default=0.10, help="Exponential token decay rate schedule modifier (default: 0.10)")
-    parser.add_argument("--r-ratio", type=float, default=0.30, help="Initial token reduction percentage capability (default: 0.30)")
+    parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome", "pit", "pit+tome+c", "pit+tome+l", "pit+tome+e", "sret", "sret+tome+c", "sret+tome+l", "sret+tome+e"], help="Model selection (default: deit)")
+    parser.add_argument("--constant-r", type=float, default=10, help="Constant token decay rate parameter (default: 10)")
+    parser.add_argument("--total-tokens", type=float, default=200, help="Linear token decay rate parameter (default: 200)")
+    parser.add_argument("--alpha", type=float, default=0.10, help="Exponential token decay rate parameter (default: 0.10)")
+    parser.add_argument("--r-ratio", type=float, default=0.30, help="Exponential token decay rate parameter (default: 0.30)")
     args = parser.parse_args()
 
     assert torch.cuda.is_available(), "CUDA environment unavailable. This script must execute on a valid GPU."
@@ -205,7 +183,6 @@ if __name__ == "__main__":
     dataset = datasets.ImageFolder(dataset_dir, transform=dataset_transform)
     dataset_loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=False, num_workers=4, pin_memory=True)
     
-    rates = [0, 10, 15, 20]
     match (args.model):
         case "deit":
             print("--- DeiT Baseline ---")
@@ -213,15 +190,13 @@ if __name__ == "__main__":
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)
 
-        case "deit+tome":
+        case "deit+tome+c":
+            print(f"--- DeiT + ToMe Constant Reduction Schedule | r = {args.constant_r} ---")
             model = timm.create_model("deit_tiny_distilled_patch16_224", pretrained=True)
             tome.patch.timm(model, prop_attn=True)
             model = model.cuda().eval()
-
-            for r in rates:
-                print(f"--- DeiT + ToMe Baseline | r = {r} ---")
-                model.r = r
-                _ = evaluate(model, dataset_loader)
+            model.r = args.constant_r
+            _ = evaluate(model, dataset_loader)
 
         case "pit":
             print("--- PiT Baseline ---")
@@ -230,15 +205,20 @@ if __name__ == "__main__":
             _ = evaluate(model, dataset_loader)
 
         case "pit+tome":
-            for r in rates:
-                print(f"--- PiT + ToMe Constant Reduction Baseline | r = {r} ---")
-                model = PiT_ToMe.pit_ti_distilled(pretrained=True, constant_r=r)
-                model = model.cuda().eval()
-                _ = evaluate(model, dataset_loader)
+            print(f"--- PiT + ToMe Constant Reduction Schedule | r = {args.constant_r} ---")
+            model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="constant", constant_r=args.constant_r)
+            model = model.cuda().eval()
+            _ = evaluate(model, dataset_loader)
 
-        case "pit+tome+d":
-            print(f"--- PiT + ToMe Dynamic Reduction | initial_r_ratio = {args.r_ratio}, alpha = {args.alpha} ---")
-            model = PiT_ToMe.pit_ti_distilled(pretrained=True, initial_r_ratio=args.r_ratio, alpha=args.alpha)
+        case "pit+tome+l":
+            print(f"--- PiT + ToMe Linear Reduction Schedule | total_tokens = {args.total_tokens} ---")
+            model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="linear", total_budget=args.total_tokens)
+            model = model.cuda().eval()
+            _ = evaluate(model, dataset_loader)
+
+        case "pit+tome+e":
+            print(f"--- PiT + ToMe Exponential Reduction Schedule | initial_r_ratio = {args.r_ratio}, alpha = {args.alpha} ---")
+            model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="exponential", initial_r_ratio=args.r_ratio, alpha=args.alpha)
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)
 
@@ -250,18 +230,25 @@ if __name__ == "__main__":
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)
 
-        case "sret+tome":
-            for r in rates:
-                print(f"--- SReT + ToMe Constant Reduction Baseline | r = {r} ---")
-                model = SReT_ToMe.SReT_T_distill(pretrained=False, constant_r=r)
-                checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
-                model.load_state_dict(checkpoint['model'])
-                model = model.cuda().eval()
-                _ = evaluate(model, dataset_loader)
+        case "sret+tome+c":
+            print(f"--- SReT + ToMe Constant Reduction Schedule | r = {args.constant_r} ---")
+            model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="constant", constant_r=args.constant_r)
+            checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+            model.load_state_dict(checkpoint['model'])
+            model = model.cuda().eval()
+            _ = evaluate(model, dataset_loader)
 
-        case "sret+tome+d":
-            print(f"--- SReT + ToMe Dynamic Reduction | initial_r_ratio = {args.r_ratio}, alpha = {args.alpha} ---")
-            model = SReT_ToMe.SReT_T_distill(pretrained=False, initial_r_ratio=args.r_ratio, alpha=args.alpha) # initialize
+        case "sret+tome+l":
+            print(f"--- SReT + ToMe Linear Reduction Schedule | total_tokens = {args.total_tokens} ---")
+            model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="linear", total_budget=args.total_tokens)
+            checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+            model.load_state_dict(checkpoint['model'])
+            model = model.cuda().eval()
+            _ = evaluate(model, dataset_loader)
+
+        case "sret+tome+e":
+            print(f"--- SReT + ToMe Exponential Reduction Schedule | initial_r_ratio = {args.r_ratio}, alpha = {args.alpha} ---")
+            model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="exponential", initial_r_ratio=args.r_ratio, alpha=args.alpha)
             checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
             model.load_state_dict(checkpoint['model'])
             model = model.cuda().eval()

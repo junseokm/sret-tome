@@ -10,6 +10,7 @@ import torch
 import itertools
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+import SReT
 from SReT_ToMe import SReT_T_distill
 from eval_gpu import evaluate 
 
@@ -23,7 +24,7 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
     """
    
     # values to explore
-    initial_r_ratios = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+    initial_r_ratios = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50]
     alphas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     search_space = list(itertools.product(initial_r_ratios, alphas))
     
@@ -41,12 +42,12 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
     
     # run baseline
     print("BASELINE")
-    baseline_model = SReT_T_distill(pretrained=False, initial_r_ratio=0.0, alpha=1.0)
+    baseline_model = SReT.SReT_T_distill(pretrained=False)
     checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
     baseline_model.load_state_dict(checkpoint['model'])
     baseline_model = baseline_model.cuda().eval()
     base_metrics = evaluate(baseline_model, dataset_loader)
-    
+
     with open(csv_path, mode="a", newline="") as f:
         csv.writer(f).writerow([
             0.0, 1.0, base_metrics["accuracy"], base_metrics["params_M"], base_metrics["flops_G"],
@@ -66,7 +67,7 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
     for idx, (r_ratio, alpha) in enumerate(search_space):
         print(f" TRIAL {idx + 1} / {total_trials}: Ratio={r_ratio}, Alpha={alpha}")
         
-        model = SReT_T_distill(pretrained=False, initial_r_ratio=r_ratio, alpha=alpha)
+        model = SReT_T_distill(pretrained=False, schedule_type="exponential", initial_r_ratio=r_ratio, alpha=alpha)
         checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
         model.load_state_dict(checkpoint['model'])
         model = model.cuda().eval()
