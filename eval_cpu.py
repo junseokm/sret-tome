@@ -165,7 +165,7 @@ if __name__ == "__main__":
             print("--- PiT Baseline ---")
             evaluate("pit")
 
-        case "pit+tome":
+        case "pit+tome+c":
             print(f"--- PiT + ToMe Constant Reduction Schedule  | r = {args.constant_r} ---")
             evaluate("pit+tome+c", r=args.constant_r)
 

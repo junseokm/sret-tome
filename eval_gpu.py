@@ -160,7 +160,7 @@ def evaluate(model, dataset_loader):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GPU Evaluation Script")
-    parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome", "pit", "pit+tome+c", "pit+tome+l", "pit+tome+e", "sret", "sret+tome+c", "sret+tome+l", "sret+tome+e"], help="Model selection (default: deit)")
+    parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome+c", "pit", "pit+tome+c", "pit+tome+l", "pit+tome+e", "sret", "sret+tome+c", "sret+tome+l", "sret+tome+e"], help="Model selection (default: deit)")
     parser.add_argument("--constant-r", type=float, default=10, help="Constant token decay rate parameter (default: 10)")
     parser.add_argument("--total-tokens", type=float, default=200, help="Linear token decay rate parameter (default: 200)")
     parser.add_argument("--alpha", type=float, default=0.10, help="Exponential token decay rate parameter (default: 0.10)")
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     assert torch.cuda.is_available(), "CUDA environment unavailable. This script must execute on a valid GPU."
 
     print("==================================================")
-    print(f"GPU: {torch.cuda.get_device_name(0)}")
+    print(f"{'GPU:':<24}{torch.cuda.get_device_name(0)}")
     print("==================================================\n")
 
     dataset_dir = '/media/datasets/imagenet/val' # ! path to imagenet dataset
@@ -204,7 +204,7 @@ if __name__ == "__main__":
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)
 
-        case "pit+tome":
+        case "pit+tome+c":
             print(f"--- PiT + ToMe Constant Reduction Schedule | r = {args.constant_r} ---")
             model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="constant", constant_r=args.constant_r)
             model = model.cuda().eval()
