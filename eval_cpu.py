@@ -1,5 +1,5 @@
 # ==============================================================================
-# SReT-ToMe Inference Benchmarking & Evaluation Script (Cross-Platform CPU)
+# SReT-ToMe Inference Benchmarking & Evaluation Script (CPU)
 #
 # Author: Junseo Kim (UTwente)
 # ==============================================================================
@@ -36,16 +36,16 @@ import timm
 
 import utilities.perf_monitor as pm
 
-def evaluate(model_name, r=0, total_tokens=0, alpha=0.10, r_ratio=0.30):
+def evaluate(model_name, constant_r=0, linear_r=0, alpha=0, initial_r=0.25):
     """
     Evaluates Latency and Throughput on the CPU for a given model.
     
     Args:
         model_name: the name of the model to evaluate.
-        r: token merge count for constant reduction.
-        total_tokens: total tokens to merge for linear reduction.
+        constant_r: token merge count for constant reduction.
+        linear_r: token merge count for linear reduction.
         alpha: alpha value for exponential reduction.
-        r_ratio: initial_r_ratio value for exponential reduction.
+        initial_r: initial_r_ratio value for exponential reduction.
     
     Returns:
         dict: a dictionary of name and values of the evaluated metrics.
@@ -62,35 +62,34 @@ def evaluate(model_name, r=0, total_tokens=0, alpha=0.10, r_ratio=0.30):
     # disable MKLDNN entirely to prevent C++ buffer overruns with ToMe
     torch.backends.mkldnn.enabled = False
 
-    # ! Instantiate the specific model 
     if model_name == "deit":
         model = timm.create_model("deit_tiny_distilled_patch16_224", pretrained=True)
     elif model_name == "deit+tome+c":
         model = timm.create_model("deit_tiny_distilled_patch16_224", pretrained=True)
         tome.patch.timm(model, prop_attn=True)
-        model.r = r
+        model.r = constant_r
     elif model_name == "pit":
         model = timm.create_model("pit_ti_distilled_224", pretrained=True)
     elif model_name == "pit+tome+c":
-        model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="constant", constant_r=r)
+        model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="constant", constant_r=constant_r)
     elif model_name == "pit+tome+l":
-        model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="linear", total_budget=total_tokens)
+        model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="linear", linear_r=linear_r)
     elif model_name == "pit+tome+e":
-        model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="exponential", initial_r_ratio=r_ratio, alpha=alpha)
+        model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="exponential", initial_r=initial_r, alpha=alpha)
     elif model_name == "sret":
         model = SReT_T_distill(pretrained=False)
         checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     elif model_name == "sret+tome+c":
-        model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="constant", constant_r=r)
+        model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="constant", constant_r=constant_r)
         checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     elif model_name == "sret+tome+l":
-        model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="linear", total_budget=total_tokens)
+        model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="linear", linear_r=linear_r)
         checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     elif model_name == "sret+tome+e":
-        model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="exponential", initial_r_ratio=r_ratio, alpha=alpha)
+        model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="exponential", initial_r=initial_r, alpha=alpha)
         checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     else:
@@ -98,7 +97,7 @@ def evaluate(model_name, r=0, total_tokens=0, alpha=0.10, r_ratio=0.30):
 
     model.eval()
 
-    # ! Latency & Throughput Evaluation
+    # ! latency & throughput
     latencies_MS = []
     dummy_tensor_tp = torch.randn(1, 3, 224, 224)
 
@@ -138,13 +137,12 @@ def evaluate(model_name, r=0, total_tokens=0, alpha=0.10, r_ratio=0.30):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(description="CPU Evaluation Script")
     parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome+c", "pit", "pit+tome+c", "pit+tome+l", "pit+tome+e", "sret", "sret+tome+c", "sret+tome+l", "sret+tome+e"], help="Model selection (default: deit)")
     parser.add_argument("--constant-r", type=float, default=10, help="Constant token decay rate parameter (default: 10)")
-    parser.add_argument("--total-tokens", type=float, default=200, help="Linear token decay rate parameter (default: 200)")
-    parser.add_argument("--alpha", type=float, default=0.10, help="Exponential token decay rate parameter (default: 0.10)")
-    parser.add_argument("--r-ratio", type=float, default=0.30, help="Exponential token decay rate parameter (default: 0.30)")
+    parser.add_argument("--linear-r", type=float, default=10, help="Linear token decay rate parameter (default: 10)")
+    parser.add_argument("--initial-r", type=float, default=0.25, help="Exponential token decay rate parameter (default: 0.25)")
+    parser.add_argument("--alpha", type=float, default=0, help="Exponential token decay rate parameter (default: 0)")
     args = parser.parse_args()
 
     arch_val = platform.machine()
@@ -158,37 +156,37 @@ if __name__ == "__main__":
             evaluate("deit")
 
         case "deit+tome+c":
-            print(f"--- DeiT + ToMe Constant Reduction Schedule | r = {args.constant_r} ---")
-            evaluate("deit+tome+c", r=args.constant_r)
+            print(f"--- DeiT + ToMe Constant Reduction Schedule | constant_r = {args.constant_r} ---")
+            evaluate("deit+tome+c", constant_r=args.constant_r)
 
         case "pit":
             print("--- PiT Baseline ---")
             evaluate("pit")
 
         case "pit+tome+c":
-            print(f"--- PiT + ToMe Constant Reduction Schedule  | r = {args.constant_r} ---")
-            evaluate("pit+tome+c", r=args.constant_r)
+            print(f"--- PiT + ToMe Constant Reduction Schedule  | constant_r = {args.constant_r} ---")
+            evaluate("pit+tome+c", constant_r=args.constant_r)
 
         case "pit+tome+l":
-            print(f"--- PiT + ToMe Linear Reduction Schedule | total_tokens = {args.total_tokens} ---")
-            evaluate("pit+tome+l", total_tokens=args.total_tokens)
+            print(f"--- PiT + ToMe Linear Reduction Schedule | linear_r = {args.linear_r} ---")
+            evaluate("pit+tome+l", linear_r=args.linear_r)
 
         case "pit+tome+e":
-            print(f"--- PiT + ToMe Exponential Reduction Schedule | initial_r_ratio = {args.r_ratio}, alpha = {args.alpha} ---")
-            evaluate("pit+tome+e", r_ratio=args.r_ratio, alpha=args.alpha)
+            print(f"--- PiT + ToMe Exponential Reduction Schedule | initial_r = {args.initial_r}, alpha = {args.alpha} ---")
+            evaluate("pit+tome+e", initial_r=args.initial_r, alpha=args.alpha)
 
         case "sret":
             print("--- SReT Baseline ---")
             evaluate("sret")
 
         case "sret+tome+c":
-            print(f"--- SReT + ToMe Constant Reduction Schedule | r = {args.constant_r} ---")
-            evaluate("sret+tome+c", r=args.constant_r)
+            print(f"--- SReT + ToMe Constant Reduction Schedule | constant_r = {args.constant_r} ---")
+            evaluate("sret+tome+c", constant_r=args.constant_r)
 
         case "sret+tome+l":
-            print(f"--- SReT + ToMe Linear Reduction Schedule | total_tokens = {args.total_tokens} ---")
-            evaluate("sret+tome+l", total_tokens=args.total_tokens)
+            print(f"--- SReT + ToMe Linear Reduction Schedule | linear_r = {args.linear_r} ---")
+            evaluate("sret+tome+l", linear_r=args.linear_r)
 
         case "sret+tome+e":
-            print(f"--- SReT + ToMe Exponential Reduction Schedule | initial_r_ratio = {args.r_ratio}, alpha = {args.alpha} ---")
-            evaluate("sret+tome+e", r_ratio=args.r_ratio, alpha=args.alpha)
+            print(f"--- SReT + ToMe Exponential Reduction Schedule | initial_r = {args.initial_r}, alpha = {args.alpha} ---")
+            evaluate("sret+tome+e", initial_r=args.initial_r, alpha=args.alpha)

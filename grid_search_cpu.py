@@ -13,7 +13,7 @@ import gc
 
 def grid_search(csv_path="grid_search_cpu.csv"):
     """
-    Performs a grid search using the 'initial_r_ratio' and 'alpha' values of the decaying token merging schedule on the SReT + ToMe architecture on a CPU.
+    Performs a grid search using the 'initial_r' and 'alpha' values of the decaying token merging schedule on the SReT + ToMe architecture on a CPU.
 
     Args:
         csv_path: the path for the resulting csv file.
@@ -25,7 +25,7 @@ def grid_search(csv_path="grid_search_cpu.csv"):
     search_space = list(itertools.product(initial_r_ratios, alphas))
     
     columns = [
-        "initial_r_ratio", "alpha", "latency", "throughput"
+        "initial_r", "alpha", "latency", "throughput"
     ]
     
     with open(csv_path, mode="w", newline="") as f:
@@ -45,16 +45,16 @@ def grid_search(csv_path="grid_search_cpu.csv"):
 
     # iterate through the grid
     total_trials = len(search_space)
-    for idx, (r_ratio, alpha) in enumerate(search_space):
-        print(f" TRIAL {idx + 1} / {total_trials}: Ratio={r_ratio}, Alpha={alpha}")
+    for idx, (initial_r, alpha) in enumerate(search_space):
+        print(f" TRIAL {idx + 1} / {total_trials}: initial_r={initial_r}, alpha={alpha}")
         
         try:
-            res = evaluate("sret+tome+e", r_ratio=r_ratio, alpha=alpha)
+            res = evaluate("sret+tome+e", initial_r=initial_r, alpha=alpha)
             
             with open(csv_path, mode="a", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow([
-                    r_ratio, alpha, 
+                    initial_r, alpha, 
                     res.get("latency", "FAILED"), 
                     res.get("throughput", "FAILED")
                 ])
@@ -66,7 +66,7 @@ def grid_search(csv_path="grid_search_cpu.csv"):
             print(f"-- [WARNING] Trial {idx + 1} failed execution: {e}")
             with open(csv_path, mode="a", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow([r_ratio, alpha, "FAILED", "FAILED"])
+                writer.writerow([initial_r, alpha, "FAILED", "FAILED"])
         
         gc.collect()
     print(f"\n>>> CPU Grid search completed successfully. Results saved to {csv_path}.")

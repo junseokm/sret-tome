@@ -16,7 +16,7 @@ from eval_gpu import evaluate
 
 def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
     """
-    Performs a grid search using the 'initial_r_ratio' and 'alpha' values of the decaying token merging schedule on the SReT + ToMe architecture on a GPU.
+    Performs a grid search using the 'initial_r' and 'alpha' values of the decaying token merging schedule on the SReT + ToMe architecture on a GPU.
 
     Args:
         dataset_loader: the ImageNet DataLoader of PyTorch.
@@ -29,7 +29,7 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
     search_space = list(itertools.product(initial_r_ratios, alphas))
     
     columns = [
-        "initial_r_ratio", "alpha", "accuracy", "params_M", "flops_G",
+        "initial_r", "alpha", "accuracy", "params_M", "flops_G",
         "throughput_bs128", "throughput_bs64", "throughput_bs32", 
         "throughput_bs16", "throughput_bs1", 
         "activation_mem_bs128", "activation_mem_bs64", "activation_mem_bs32",
@@ -64,10 +64,10 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
 
     # iterate through the grid
     total_trials = len(search_space)
-    for idx, (r_ratio, alpha) in enumerate(search_space):
-        print(f" TRIAL {idx + 1} / {total_trials}: Ratio={r_ratio}, Alpha={alpha}")
+    for idx, (initial_r, alpha) in enumerate(search_space):
+        print(f" TRIAL {idx + 1} / {total_trials}: initial_r={initial_r}, alpha={alpha}")
         
-        model = SReT_T_distill(pretrained=False, schedule_type="exponential", initial_r_ratio=r_ratio, alpha=alpha)
+        model = SReT_T_distill(pretrained=False, schedule_type="exponential", initial_r=initial_r, alpha=alpha)
         checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
         model.load_state_dict(checkpoint['model'])
         model = model.cuda().eval()
@@ -79,7 +79,7 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
             with open(csv_path, mode="a", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow([
-                    r_ratio, alpha, res["accuracy"], res["params_M"], res["flops_G"],
+                    initial_r, alpha, res["accuracy"], res["params_M"], res["flops_G"],
                     res["throughput_bs128"], res["throughput_bs64"], res["throughput_bs32"],
                     res["throughput_bs16"], res["throughput_bs1"], 
                     res["activation_mem_bs128"], res["activation_mem_bs64"], res["activation_mem_bs32"], 
@@ -94,7 +94,7 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
             with open(csv_path, mode="a", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow([
-                    r_ratio, alpha, "FAILED", "FAILED", "FAILED",
+                    initial_r, alpha, "FAILED", "FAILED", "FAILED",
                     "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", 
                     "FAILED", "FAILED", "FAILED", "FAILED", "FAILED"
                 ])
@@ -115,5 +115,5 @@ if __name__ == "__main__":
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ]) # ! standard normalization parameters for imagenet models
     dataset = datasets.ImageFolder(dataset_dir, transform=dataset_transform)
-    dataset_loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=False, num_workers=4, pin_memory=True)
+    dataset_loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=False, num_workers=4, pin_memory=True) # batch size doesn't matter since it's only used for acc evaluations
     grid_search(dataset_loader) # ! run grid search
