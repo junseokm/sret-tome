@@ -181,7 +181,7 @@ class Transformer_Block(nn.Module):
         x = self.coefficient1(x) + self.coefficient2(self.drop_path(attn_out))
 
         if safe_r > 0:
-            merge_func, unmerge_func = merge.bipartite_soft_matching(k_matrix, safe_r) # * use the 'Key' matrix to get the merge and unmerge functions
+            merge_func, unmerge_func = merge.bipartite_soft_matching(k_matrix, int(safe_r)) # * use the 'Key' matrix to get the merge and unmerge functions
         else:
             def placeholder(tensor, mode=None):
                 return tensor

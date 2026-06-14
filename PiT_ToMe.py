@@ -90,7 +90,7 @@ class PiT_Transformer_Block(nn.Module):
 
         if safe_r > 0:
             k_spatial = k_matrix[:, num_cls_tokens:] # * isolate the CLS token
-            merge_func, unmerge_func = merge.bipartite_soft_matching(k_spatial, safe_r)
+            merge_func, unmerge_func = merge.bipartite_soft_matching(k_spatial, int(safe_r))
 
             x_cls = x[:, :num_cls_tokens]
             x_spatial = x[:, num_cls_tokens:]
