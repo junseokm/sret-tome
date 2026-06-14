@@ -42,20 +42,26 @@ Requires the official validation set of the ImageNet-1K (ILSVRC 2012) dataset. P
 
 ## Usage
 
-`python <eval_gpu.py | eval_cpu.py> <model_name> [--r-ratio <float>] [--alpha <float>]`
-* `<eval_gpu.py | eval_cpu.py>`: The execution environment **Required**
-* `<model_name>`: The model to evaluate (`deit`, `deit+tome`, `pit`, `pit+tome`, `pit+tome+d`, `sret`, `sret+tome`, `sret+tome+d`) **Required**
-* `--r-ratio`: Initial reduction percentage for dynamic reduction **Optional (Default: 0.30)**
-* `--alpha`: Decay rate for dynamic reduction **Optional (Default: 0.10)**
+`python <eval_gpu.py | eval_cpu.py> <model_name> [--constant-r <int>] [--total-tokens <int>] [--r-ratio <float>] [--alpha <float>]`
+* `<eval_gpu.py | eval_cpu.py>`: The execution environment 
+* `<model_name>`: The model to evaluate (`deit`, `deit+tome+c`, `pit`, `pit+tome+c`, `pit+tome+l`, `pit+tome+e`, `sret`, `sret+tome+c`, `sret+tome+l`, `sret+tome+e`)
+    - `+c` - constant reduction schedule
+    - `+l` - linear reduction schedule
+    - `+e` - exponential reduction schedule
+* `--constant-r`: Fixed merge rate for constant reduction 
+* `--total-tokens`: Total tokens to reduce for linear reduction 
+* `--r-ratio`: Initial reduction percentage for exponential reduction 
+* `--alpha`: Decay rate for exponential reduction
 
 ## Examples
-DeiT Baseline GPU Evaluation:
+
+1. DeiT Baseline Evaluation
 ```bash
 python eval_gpu.py deit
 ```
 ```bash
 ==================================================
-GPU: NVIDIA GeForce RTX 4060 Ti
+GPU:                    NVIDIA GeForce RTX 4060 Ti
 ==================================================
 
 --- DeiT Baseline ---
@@ -65,11 +71,11 @@ Target Batch Size:                             128
 Top-1 Accuracy:                            74.40 %
 Total Parameters:                           5.91 M
 Theoretical FLOPs:                          2.17 G
-Throughput (BS=128):            1823.85 images/sec
-Throughput (BS=64):             1957.84 images/sec
-Throughput (BS=32):             2026.93 images/sec
-Throughput (BS=16):             2369.22 images/sec
-Throughput (BS=1):               732.58 images/sec
+Throughput (BS=128):            1803.92 images/sec
+Throughput (BS=64):             1935.23 images/sec
+Throughput (BS=32):             2021.49 images/sec
+Throughput (BS=16):             2341.51 images/sec
+Throughput (BS=1):               714.46 images/sec
 Peak Activation Memory (BS=128):         227.20 MB
 Peak Activation Memory (BS=64):          113.03 MB
 Peak Activation Memory (BS=32):           56.44 MB
@@ -77,7 +83,6 @@ Peak Activation Memory (BS=16):           28.59 MB
 Peak Activation Memory (BS=1):             1.76 MB
 ==================================================
 ```
-DeiT Baseline CPU Evaluation:
 ```bash
 python eval_cpu.py deit
 ```
@@ -95,50 +100,136 @@ Throughput:                          48.55 img/sec
 True Peak Activation RAM:                 42.59 MB
 ==================================================
 ```
-SReT+ToMe Dynamic Reduction (r-ratio=0.25, alpha=0.2) GPU Evaluation:
+2. PiT Constant Reduction Evaluation
 ```bash
-python eval_gpu.py sret+tome+d --r-ratio 0.25 --alpha 0.2
+python eval_gpu.py pit+tome+c --constant-r 20
 ```
 ```bash
 ==================================================
-GPU: NVIDIA GeForce RTX 4060 Ti
+GPU:                    NVIDIA GeForce RTX 4060 Ti
 ==================================================
 
---- SReT + ToMe Dynamic Reduction | initial_r_ratio = 0.25, alpha = 0.2 ---
+--- PiT + ToMe Constant Reduction Schedule  | r = 20.0 ---
 ==================================================
 Target Batch Size:                             128
 --------------------------------------------------
-Top-1 Accuracy:                            75.20 %
-Total Parameters:                           4.76 M
-Theoretical FLOPs:                          1.40 G
-Throughput (BS=128):            1426.68 images/sec
-Throughput (BS=64):             1577.19 images/sec
-Throughput (BS=32):             1641.98 images/sec
-Throughput (BS=16):             1632.02 images/sec
-Throughput (BS=1):               143.71 images/sec
-Peak Activation Memory (BS=128):         489.45 MB
-Peak Activation Memory (BS=64):          245.43 MB
-Peak Activation Memory (BS=32):          123.13 MB
-Peak Activation Memory (BS=16):           62.34 MB
-Peak Activation Memory (BS=1):             3.90 MB
+Top-1 Accuracy:                            71.09 %
+Total Parameters:                           5.10 M
+Theoretical FLOPs:                          0.66 G
+Throughput (BS=128):            1723.47 images/sec
+Throughput (BS=64):             1784.13 images/sec
+Throughput (BS=32):             1811.17 images/sec
+Throughput (BS=16):             1759.97 images/sec
+Throughput (BS=1):               218.20 images/sec
+Peak Activation Memory (BS=128):        1193.10 MB
+Peak Activation Memory (BS=64):          597.80 MB
+Peak Activation Memory (BS=32):          299.43 MB
+Peak Activation Memory (BS=16):          150.61 MB
+Peak Activation Memory (BS=1):             9.32 MB
 ==================================================
 ```
-SReT+ToMe Dynamic Reduction (r-ratio=0.25, alpha=0.2) CPU Evaluation:
 ```bash
-python eval_cpu.py sret+tome+d --r-ratio 0.25 --alpha 0.2
+python eval_cpu.py pit+tome+c --constant-r 20
 ```
 ```bash
 ==================================================
 CPU:                                        x86_64
 ==================================================
 
---- SReT + ToMe Dynamic Reduction | initial_r_ratio = 0.25, alpha = 0.2 ---
+--- PiT + ToMe Constant Reduction Schedule  | r = 20.0 ---
 ==================================================
 Target Batch Size:                               1
 --------------------------------------------------
-Latency:                                  21.49 ms
-Throughput:                          46.54 img/sec
-True Peak Activation RAM:                 75.53 MB
+Latency:                                   9.87 ms
+Throughput:                         101.29 img/sec
+==================================================
+```
+3. SReT Linear Reduction Evaluation
+```bash
+python eval_gpu.py sret+tome+l --total-tokens 300
+```
+```bash
+==================================================
+GPU:                    NVIDIA GeForce RTX 4060 Ti
+==================================================
+
+--- SReT + ToMe Linear Reduction Schedule | total_tokens = 300.0 ---
+==================================================
+Target Batch Size:                             128
+--------------------------------------------------
+Top-1 Accuracy:                            61.36 %
+Total Parameters:                           4.76 M
+Theoretical FLOPs:                          1.26 G
+Throughput (BS=128):            1293.42 images/sec
+Throughput (BS=64):             1388.91 images/sec
+Throughput (BS=32):             1421.85 images/sec
+Throughput (BS=16):             1187.00 images/sec
+Throughput (BS=1):               112.98 images/sec
+Peak Activation Memory (BS=128):         742.90 MB
+Peak Activation Memory (BS=64):          371.51 MB
+Peak Activation Memory (BS=32):          188.13 MB
+Peak Activation Memory (BS=16):           92.85 MB
+Peak Activation Memory (BS=1):             5.80 MB
+==================================================
+```
+```bash
+python eval_cpu.py sret+tome+l --total-tokens 300
+```
+```bash
+==================================================
+CPU:                                        x86_64
+==================================================
+
+--- SReT + ToMe Linear Reduction Schedule | total_tokens = 300.0 ---
+==================================================
+Target Batch Size:                               1
+--------------------------------------------------
+Latency:                                  12.49 ms
+Throughput:                          80.07 img/sec
+==================================================
+```
+4. SReT Exponential Reduction Evaluation
+```bash
+python eval_gpu.py sret+tome+e --r-ratio 0.25 --alpha 0
+```
+```bash
+==================================================
+GPU:                    NVIDIA GeForce RTX 4060 Ti
+==================================================
+
+--- SReT + ToMe Exponential Reduction Schedule | initial_r_ratio = 0.25, alpha = 0.0 ---
+==================================================
+Target Batch Size:                             128
+--------------------------------------------------
+Top-1 Accuracy:                            75.90 %
+Total Parameters:                           4.76 M
+Theoretical FLOPs:                          1.49 G
+Throughput (BS=128):            1366.12 images/sec
+Throughput (BS=64):             1493.88 images/sec
+Throughput (BS=32):             1572.56 images/sec
+Throughput (BS=16):             1578.22 images/sec
+Throughput (BS=1):               175.68 images/sec
+Peak Activation Memory (BS=128):         489.38 MB
+Peak Activation Memory (BS=64):          245.46 MB
+Peak Activation Memory (BS=32):          122.71 MB
+Peak Activation Memory (BS=16):           62.09 MB
+Peak Activation Memory (BS=1):             3.90 MB
+==================================================
+```
+```bash
+python eval_cpu.py sret+tome+e --r-ratio 0.25 --alpha 0
+```
+```bash
+==================================================
+CPU:                                        x86_64
+==================================================
+
+--- SReT + ToMe Exponential Reduction Schedule | initial_r_ratio = 0.25, alpha = 0.0 ---
+==================================================
+Target Batch Size:                               1
+--------------------------------------------------
+Latency:                                  11.10 ms
+Throughput:                          90.12 img/sec
 ==================================================
 ```
 
