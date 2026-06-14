@@ -371,7 +371,7 @@ class conv_embedding(nn.Module):
 class SReT(nn.Module):
     def __init__(self, image_size, patch_size, stride, base_dims, depth, recursive_num, groups1, groups2, heads,
                  mlp_ratio, np_mlp_ratio, num_classes=1000, in_chans=3,
-                 attn_drop_rate=.0, drop_rate=.0, drop_path_rate=.1, initial_r_ratio=0.0, alpha=1.0, constant_r=None, schedule_type="exponential", total_budget=None): # * add 'initial_r_ratio', 'alpha', 'constant_r', 'schedule_type', 'total_budget' 
+                 attn_drop_rate=.0, drop_rate=.0, drop_path_rate=.1, initial_r=0.0, alpha=0.0, linear_r=0.0, constant_r=0.0, schedule_type="constant"): # * add args 
         super(SReT, self).__init__()
 
         total_block = sum(depth)
@@ -382,16 +382,16 @@ class SReT(nn.Module):
 
         # * add
         self.schedule_type = schedule_type
-        self.initial_r_ratio = initial_r_ratio
+        self.initial_r = initial_r
         self.alpha = alpha
         self.constant_r = constant_r
-        self.total_budget = total_budget
+        self.linear_r = linear_r
         self.depth_list = depth  # list of depths per stage
         self.total_layers = sum(depth) 
 
         # * pre-calculate the global linear schedule across all layers
-        if self.schedule_type == "linear" and self.total_budget is not None:
-            start_r = (2 * self.total_budget) / self.total_layers
+        if self.schedule_type == "linear":
+            start_r = 2 * self.linear_r
             step = start_r / (self.total_layers - 1) if self.total_layers > 1 else 0
             self.global_linear_schedule = [int(math.floor(max(0, start_r - (step * d)))) for d in range(self.total_layers)]
 
@@ -477,7 +477,7 @@ class SReT(nn.Module):
             current_seq_len = x.shape[2] * x.shape[3] # * (H * W), get initial sequence length of stage
 
             if self.schedule_type == "exponential":
-                initial_r = int(current_seq_len * self.initial_r_ratio)
+                initial_r = int(current_seq_len * self.initial_r)
                 stage_schedule = [int(math.floor(initial_r * (self.alpha ** d))) for d in range(current_stage_depth)]
                 
             elif self.schedule_type == "linear":
@@ -495,7 +495,7 @@ class SReT(nn.Module):
         current_stage_depth = self.depth_list[-1]
         current_seq_len = x.shape[2] * x.shape[3]
         if self.schedule_type == "exponential":
-            initial_r = int(current_seq_len * self.initial_r_ratio)
+            initial_r = int(current_seq_len * self.initial_r)
             stage_schedule = [int(math.floor(initial_r * (self.alpha ** d))) for d in range(current_stage_depth)]
         elif self.schedule_type == "linear":
             stage_schedule = self.global_linear_schedule[global_layer_idx : global_layer_idx + current_stage_depth]
