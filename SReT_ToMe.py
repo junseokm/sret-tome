@@ -1,5 +1,5 @@
 # ==============================================================================
-# Orthogonal Compression for Edge Vision Transformers: Combining Recursive Weight-Sharing with Token Merging
+# Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers
 #
 # Author: Junseo Kim (UTwente)
 # ==============================================================================
