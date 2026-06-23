@@ -1,6 +1,10 @@
-# Orthogonal Compression for Edge Vision Transformers: Recursive Weight-Sharing with Token Merging
+# Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers
 
 University of Twente TCS Bachelor Research Project
+
+**Author:** Junseo Kim <br>
+**Supervised by:** Uraz Odyurt & Amirreza Yousefzadeh<br>
+
 
 ## Repository Structure
 
