@@ -10,7 +10,7 @@
 Implementation of the paper "(TBD)" (TScIT 45).
 
 **Author:** Junseo Kim <br>
-**Supervised by:** Uraz Odyurt & Amirreza Yousefzadeh<br>
+**Supervised by:** dr. ir. Uraz Odyurt & dr. Amirreza Yousefzadeh<br>
 
 ## Abstract
 
