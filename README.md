@@ -26,7 +26,7 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 
 ## Results on ImageNet-1K
 
-| Model Configuration | Acc.<br>(%) | Params<br>(M) | FLOPs<br>(G) | GPU Thr.<br>BS=128 | GPU Thr.<br>BS=1 | GPU Mem<br>BS=128 | GPU Mem<br>BS=1 | CPU Thr.<br>BS=1 |
+| Model Configuration | Acc.<br>(%) | Params<br>(M) | FLOPs<br>(G) | GPU<br>Tput.<br>BS=128 | GPU<br>Tput.<br>BS=1 | GPU<br>Mem<br>BS=128 | GPU<br>Mem<br>BS=1 | CPU<br>Tput.<br>BS=1 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Standard ViT** | | | | | | | | |
 | DeiT-Tiny-Distill | 74.40 | 5.91 | 2.17 | 1825.88 | 730.20 | 227.20 | 1.76 | 141.79 |
@@ -47,22 +47,22 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 
 ```
 ├── figures/             # Figures
-├── images/              # Visualization images
-├── logistics/           # CPU Performance Monitor helper
-├── plots/               # Evaluation plots               
-├── tome/                # Token Merging (ToMe) modules     
-├── utilities/           # CPU Performance Monitor script            
-├── weights/             # Pre-trained model checkpoints
+├── images/              # Images
+├── logistics/           # CPU performance snapshot utilities helper
+├── plots/               # Plots               
+├── tome/                # Original ToMe     
+├── utilities/           # CPU performance snapshot utilities           
+├── weights/             # Pre-trained model weights
 ├── PiT_ToMe.py          # PiT+ToMe integration module
 ├── SReT_ToMe.py         # SReT+ToMe integration module
 ├── SReT.py              # Original SReT 
-├── eval_cpu.py          # Benchmarking script for CPU environments
-├── eval_gpu.py          # Benchmarking script for GPU environments
-├── grid_search_cpu.py   # Decay parameter CPU grid search script
+├── eval_cpu.py          # CPU Benchmarking script
+├── eval_gpu.py          # GPU Benchmarking script
+├── grid_search_cpu.py   # CPU grid search script
 ├── grid_search_cpu.csv  # CPU grid search results
-├── grid_search_gpu.py   # Decay parameter GPU grid search script
+├── grid_search_gpu.py   # GPU grid search script
 ├── grid_search_gpu.csv  # GPU grid search results
-├── results.ipynb        # Notebook with baseline evaluation results
+├── results.ipynb        # Notebook with evaluation results
 ├── visuals.ipynb        # Notebook for token merging visualization
 ├── plots.ipynb          # Notebook for plot generation
 ├── requirements.txt     # Python requirements
@@ -71,7 +71,8 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 
 ## Setup
 
-Requires the official validation set of the ImageNet-1K (ILSVRC 2012) dataset. Path variable `dataset_dir` needs to be updated across scripts. 
+- Requires the official validation set of the [ImageNet-1K (ILSVRC 2012)](https://www.image-net.org/download.php) dataset.
+- Path variable `dataset_dir` needs to be updated across scripts. 
 
 `conda env create -f environment.yml`<br>
 `conda activate sret-tome-env`<br>
@@ -336,4 +337,11 @@ Throughput:                          85.05 img/sec
 
 ## Citation
 
-TBD
+```
+@inproceedings{kim2026,
+    title={Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers},
+    author={Kim, Junseo},
+    booktitle={Proceedings of the 45th Twente Student Conference on IT (TScIT)},
+    year={2026}
+}
+```
