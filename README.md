@@ -7,7 +7,7 @@
 
 >University of Twente TCS Bachelor Research Project
 
-Implementation of the paper "(TBD)" (TScIT 45).
+Implementation of the paper "Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers" (TScIT 45).
 
 **Author:** Junseo Kim <br>
 **Supervised by:** dr. ir. Uraz Odyurt & dr. Amirreza Yousefzadeh<br>
