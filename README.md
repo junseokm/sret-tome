@@ -26,7 +26,7 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 
 ## Results on ImageNet-1K
 
-| Model Configuration | Acc.<br>(%) | Params<br>(M) | FLOPs<br>(G) | GPU<br>Tput.<br>BS=128 | GPU<br>Tput.<br>BS=1 | GPU<br>Mem<br>BS=128 | GPU<br>Mem<br>BS=1 | CPU<br>Tput.<br>BS=1 |
+| Model Configuration | Acc.<br>(%) | Params<br>(M) | FLOPs<br>(G) | GPU<br>Tput.<br>(img/s)<br>BS=128 | GPU<br>Tput.<br>(img/s)<br>BS=1 | GPU<br>Mem<br>(MB)<br>BS=128 | GPU<br>Mem<br>(MB)<br>BS=1 | CPU<br>Tput.<br>(img/s)<br>BS=1 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Standard ViT** | | | | | | | | |
 | DeiT-Tiny-Distill | 74.40 | 5.91 | 2.17 | 1825.88 | 730.20 | 227.20 | 1.76 | 141.79 |
