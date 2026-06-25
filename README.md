@@ -32,13 +32,13 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 | DeiT-Tiny-Distill | 74.40 | 5.91 | 2.17 | 1825.88 | 730.20 | 227.20 | 1.76 | 141.79 |
 | **Recursive ViT** | | | | | | | | |
 | SReT-Tiny-Distill | 77.42 | 4.76 | 1.91 | 1072.86 | 223.58 | 795.76 | 6.22 | 83.32 |
-| ↳ *ToMe: Constant (r=10)* | 71.01 <sub>(-6.41)</sub> | -- | 1.32 <sub>(-30.9%)</sub> | 1176.27 <sub>(+9.6%)</sub> | 110.24 <sub>(-50.7%)</sub> | 769.79 <sub>(-3.3%)</sub> | 6.01 <sub>(-3.4%)</sub> | 75.97 <sub>(-8.8%)</sub> |
-| ↳ *ToMe: Constant (r=20)* | 41.06 <sub>(-36.36)</sub> | -- | 1.06 <sub>(-44.5%)</sub> | 1331.23 <sub>(+24.1%)</sub> | 112.56 <sub>(-49.7%)</sub> | 756.22 <sub>(-5.0%)</sub> | 5.91 <sub>(-5.0%)</sub> | 83.16 <sub>(-0.2%)</sub> |
-| ↳ *ToMe: Linear (r=10)* | 74.64 <sub>(-2.78)</sub> | -- | 1.46 <sub>(-23.6%)</sub> | 1177.32 <sub>(+9.7%)</sub> | 116.12 <sub>(-48.1%)</sub> | 756.22 <sub>(-5.0%)</sub> | 5.91 <sub>(-5.0%)</sub> | 73.06 <sub>(-12.3%)</sub> |
-| ↳ *ToMe: Linear (r=20)* | 14.87 <sub>(-62.55)</sub> | -- | 1.07 <sub>(-44.0%)</sub> | 1427.14 <sub>(+33.0%)</sub> | 117.21 <sub>(-47.6%)</sub> | 729.46 <sub>(-8.3%)</sub> | 5.70 <sub>(-8.4%)</sub> | 85.30 <sub>(+2.4%)</sub> |
-| ↳ *ToMe: Exp. (r=0.1, α=0.6)* | 76.35 <sub>(-1.07)</sub> | -- | 1.61 <sub>(-15.7%)</sub> | 1186.62 <sub>(+10.6%)</sub> | 128.30 <sub>(-42.6%)</sub> | 664.75 <sub>(-16.5%)</sub> | 5.19 <sub>(-16.6%)</sub> | 76.44 <sub>(-8.3%)</sub> |
-| ↳ **ToMe: Exp. (r=0.25, α=0.0)** | **75.95** <sub>(-1.47)</sub> | **--** | **1.49** <sub>(-22.0%)</sub> | **1368.67** <sub>(+27.6%)</sub> | **174.37** <sub>(-22.0%)</sub> | **489.38** <sub>(-38.5%)</sub> | **3.90** <sub>(-37.3%)</sub> | **84.15** <sub>(+1.0%)</sub> |
-| ↳ *ToMe: Exp. (r=0.4, α=0.2)* | 69.71 <sub>(-7.71)</sub> | -- | 1.13 <sub>(-40.8%)</sub> | 1886.90 <sub>(+75.9%)</sub> | 147.91 <sub>(-33.8%)</sub> | 391.51 <sub>(-50.8%)</sub> | 3.90 <sub>(-37.3%)</sub> | 88.12 <sub>(+5.8%)</sub> |
+| ↳ *ToMe: Constant<br>(r=10)* | 71.01 <sub>(-6.41)</sub> | -- | 1.32 <sub>(-30.9%)</sub> | 1176.27 <sub>(+9.6%)</sub> | 110.24 <sub>(-50.7%)</sub> | 769.79 <sub>(-3.3%)</sub> | 6.01 <sub>(-3.4%)</sub> | 75.97 <sub>(-8.8%)</sub> |
+| ↳ *ToMe: Constant<br>(r=20)* | 41.06 <sub>(-36.36)</sub> | -- | 1.06 <sub>(-44.5%)</sub> | 1331.23 <sub>(+24.1%)</sub> | 112.56 <sub>(-49.7%)</sub> | 756.22 <sub>(-5.0%)</sub> | 5.91 <sub>(-5.0%)</sub> | 83.16 <sub>(-0.2%)</sub> |
+| ↳ *ToMe: Linear<br>(r=10)* | 74.64 <sub>(-2.78)</sub> | -- | 1.46 <sub>(-23.6%)</sub> | 1177.32 <sub>(+9.7%)</sub> | 116.12 <sub>(-48.1%)</sub> | 756.22 <sub>(-5.0%)</sub> | 5.91 <sub>(-5.0%)</sub> | 73.06 <sub>(-12.3%)</sub> |
+| ↳ *ToMe: Linear<br>(r=20)* | 14.87 <sub>(-62.55)</sub> | -- | 1.07 <sub>(-44.0%)</sub> | 1427.14 <sub>(+33.0%)</sub> | 117.21 <sub>(-47.6%)</sub> | 729.46 <sub>(-8.3%)</sub> | 5.70 <sub>(-8.4%)</sub> | 85.30 <sub>(+2.4%)</sub> |
+| ↳ *ToMe: Exp.<br>(r=0.1, α=0.6)* | 76.35 <sub>(-1.07)</sub> | -- | 1.61 <sub>(-15.7%)</sub> | 1186.62 <sub>(+10.6%)</sub> | 128.30 <sub>(-42.6%)</sub> | 664.75 <sub>(-16.5%)</sub> | 5.19 <sub>(-16.6%)</sub> | 76.44 <sub>(-8.3%)</sub> |
+| ↳ **ToMe: Exp.<br>(r=0.25, α=0.0)** | **75.95** <sub>(-1.47)</sub> | **--** | **1.49** <sub>(-22.0%)</sub> | **1368.67** <sub>(+27.6%)</sub> | **174.37** <sub>(-22.0%)</sub> | **489.38** <sub>(-38.5%)</sub> | **3.90** <sub>(-37.3%)</sub> | **84.15** <sub>(+1.0%)</sub> |
+| ↳ *ToMe: Exp.<br>(r=0.4, α=0.2)* | 69.71 <sub>(-7.71)</sub> | -- | 1.13 <sub>(-40.8%)</sub> | 1886.90 <sub>(+75.9%)</sub> | 147.91 <sub>(-33.8%)</sub> | 391.51 <sub>(-50.8%)</sub> | 3.90 <sub>(-37.3%)</sub> | 88.12 <sub>(+5.8%)</sub> |
 
 - GPU metrics measured on an **NVIDIA RTX 4060 Ti**. 
 - CPU metrics measured on an **Intel Core Ultra 9 285K** (constrained to four threads).
@@ -58,8 +58,8 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 ├── utilities/           # CPU performance snapshot utilities           
 ├── weights/             # Pre-trained model weights
 |   ...
-├── eval_cpu.py          # CPU Benchmarking script
-├── eval_gpu.py          # GPU Benchmarking script
+├── eval_cpu.py          # CPU evaluation script
+├── eval_gpu.py          # GPU evaluation script
 ├── environment.yml      # Environment
 ├── requirements.txt     # Python requirements
 ```
