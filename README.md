@@ -72,7 +72,7 @@ All evaluations require the official validation set of the **ImageNet-1K (ILSVRC
 2. PyTorch expects the validation images to be organized into class-specific subdirectories. Navigate into the extracted validation folder via terminal and run the standard PyTorch formatting script:
     ```bash
    wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
-3. Before running `notebooks/results.ipynb`, update the `dataset_dir` (first cell) variable to the local ImageNet directory.
+3. For running `notebooks/results.ipynb`, update the `dataset_dir` (first cell) variable to the local ImageNet directory.
 
 ## Pre-trained Models
 
