@@ -14,11 +14,11 @@ Implementation of the paper "(TBD)" (TScIT 45).
 
 ## Abstract
 
-Vision Transformers (ViTs) demonstrate exceptional performance in computer vision but suffer from large parameter counts and quadratic computational complexity $O(N^2)$, severely limiting their deployment on resource-constrained edge hardware. While recursive weight-sharing reduces parameter counts and token merging mitigates computational and memory bottlenecks, integrating these two paradigms without costly retraining introduces severe topological and representational clashes, leaving this intersection largely unexplored. We propose a training-free orthogonal compression framework that successfully combines the recursive weight-sharing of the Sliced Recursive Transformer (SReT) with the dynamic token merging algorithm of Token Merging (ToMe). By implementing an unmerge tracking stack, enforcing strict mathematical merging bounds, and applying parallel spatial tracking, our methodology resolves the rigid topological and merging constraints of hierarchical, recursive ViTs. Furthermore, we introduce a novel exponential token reduction schedule to stabilize the semantic densification inherent to recursive loops. Benchmarked on ImageNet-1K, our optimized configuration achieves a 27.6\% increase in throughput and a 38.5\% reduction in peak activation memory with a minimal 1.47\% accuracy drop on a GPU at a batch size of 128. Ultimately, this inference-only approach establishes the feasibility of dynamic token reduction within recursive architectures, providing a structural baseline for future edge-targeted optimizations. 
+Vision Transformers (ViTs) demonstrate exceptional performance in computer vision but suffer from large parameter counts and quadratic computational complexity $O(N^2)$, severely limiting their deployment on resource-constrained edge hardware. While recursive weight-sharing reduces parameter counts and token merging mitigates computational and memory bottlenecks, integrating these two paradigms without costly retraining is non-trivial, leaving this intersection largely unexplored. We propose a post-training multi-axis compression approach that successfully combines the recursive weight-sharing of the Sliced Recursive Transformer (SReT) with the dynamic token merging algorithm of Token Merging (ToMe). By implementing an unmerge tracking stack, enforcing strict mathematical merging bounds, and applying parallel spatial tracking, our methodology resolves the spatial and merging constraints of hierarchical, recursive ViTs. Furthermore, we utilize an exponential token reduction schedule to stabilize the semantic densification inherent to recursive loops. Benchmarked on ImageNet-1K, our optimized configuration achieves a 27.6\% increase in throughput and a 38.5\% reduction in Peak Activation Memory (PAM) with a minimal 1.47\% accuracy drop on a GPU at a batch size of 128. However, the algorithmic overhead negated the performance gains at a batch size of 1. Nevertheless, this approach establishes the feasibility of dynamic token reduction within recursive architectures, providing a structural baseline for future edge-targeted optimizations. 
 
 ## Our Approach
 
-- Overview of the proposed compression framework combining [SReT](https://github.com/szq0214/SReT/tree/main) and [ToMe](https://github.com/facebookresearch/ToMe)<br>
+- Overview of the proposed compression approach combining [SReT](https://github.com/szq0214/SReT/tree/main) and [ToMe](https://github.com/facebookresearch/ToMe)<br>
 <img src="figures/teaser.png" alt="Teaser">
 
 - SReT+ToMe Transformer Block<br>
@@ -26,23 +26,22 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 
 ## Results on ImageNet-1K
 
-**Hardware Setup:** 
-- GPU metrics measured on an **NVIDIA RTX 4060 Ti**. 
-- CPU metrics measured on an **Intel Core Ultra 9 285K** (constrained to four threads).
-
-| Model Configuration | Top-1 Acc. | Params | FLOPs | GPU Thr. BS=128 | GPU Thr. BS=1 | GPU Mem BS=128 | GPU Mem BS=1 | CPU Thr. BS=1 |
+| Model Configuration | Acc.<br>(%) | Params<br>(M) | FLOPs<br>(G) | GPU Thr.<br>BS=128 | GPU Thr.<br>BS=1 | GPU Mem<br>BS=128 | GPU Mem<br>BS=1 | CPU Thr.<br>BS=1 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Standard ViT** | | | | | | | | |
-| DeiT-Tiny-Distill | 74.40% | 5.91M | 2.17G | 1825.88 | 730.20 | 227.20 MB | 1.76 MB | 141.79 |
+| DeiT-Tiny-Distill | 74.40 | 5.91 | 2.17 | 1825.88 | 730.20 | 227.20 | 1.76 | 141.79 |
 | **Recursive ViT** | | | | | | | | |
-| SReT-Tiny-Distill | 77.42% | 4.76M | 1.91G | 1072.86 | 223.58 | 795.76 MB | 6.22 MB | 83.32 |
-| ↳ *ToMe: Constant* (r=10) | 71.01% (-6.41) | -- | 1.32G (-30.9%) | 1176.27 (+9.6%) | 110.24 (-50.7%) | 769.79 MB (-3.3%) | 6.01 MB (-3.4%) | 75.97 (-8.8%) |
-| ↳ *ToMe: Constant* (r=20) | 41.06% (-36.36) | -- | 1.06G (-44.5%) | 1331.23 (+24.1%)| 112.56 (-49.7%) | 756.22 MB (-5.0%) | 5.91 MB (-5.0%) | 83.16 (-0.2%) |
-| ↳ *ToMe: Linear* (r=10) | 74.64% (-2.78) | -- | 1.46G (-23.6%) | 1177.32 (+9.7%) | 116.12 (-48.1%) | 756.22 MB (-5.0%) | 5.91 MB (-5.0%) | 73.06 (-12.3%) |
-| ↳ *ToMe: Linear* (r=20) | 14.87% (-62.55) | -- | 1.07G (-44.0%) | 1427.14 (+33.0%)| 117.21 (-47.6%) | 729.46 MB (-8.3%) | 5.70 MB (-8.4%) | 85.30 (+2.4%) |
-| ↳ **Ours: Exp.** (r=0.1, α=0.6) | 76.35% (-1.07) | -- | 1.61G (-15.7%) | 1186.62 (+10.6%) | 128.30 (-42.6%) | 664.75 MB (-16.5%) | 5.19 MB (-16.6%) | 76.44 (-8.3%) |
-| ⭐ **Ours: Exp.** (r=0.25, α=0.0) | **75.95%** (-1.47) | **--** | **1.49G** (-22.0%) | **1368.67** (+27.6%) | **174.37** (-22.0%) | **489.38 MB** (-38.5%) | **3.90 MB** (-37.3%) | **84.15** (+1.0%) |
-| ↳ **Ours: Exp.** (r=0.4, α=0.2) | 69.71% (-7.71) | -- | 1.13G (-40.8%) | 1886.90 (+75.9%) | 147.91 (-33.8%) | 391.51 MB (-50.8%) | 3.90 MB (-37.3%) | 88.12 (+5.8%) |
+| SReT-Tiny-Distill | 77.42 | 4.76 | 1.91 | 1072.86 | 223.58 | 795.76 | 6.22 | 83.32 |
+| ↳ *ToMe: Constant (r=10)* | 71.01 <sub>(-6.41)</sub> | -- | 1.32 <sub>(-30.9%)</sub> | 1176.27 <sub>(+9.6%)</sub> | 110.24 <sub>(-50.7%)</sub> | 769.79 <sub>(-3.3%)</sub> | 6.01 <sub>(-3.4%)</sub> | 75.97 <sub>(-8.8%)</sub> |
+| ↳ *ToMe: Constant (r=20)* | 41.06 <sub>(-36.36)</sub> | -- | 1.06 <sub>(-44.5%)</sub> | 1331.23 <sub>(+24.1%)</sub> | 112.56 <sub>(-49.7%)</sub> | 756.22 <sub>(-5.0%)</sub> | 5.91 <sub>(-5.0%)</sub> | 83.16 <sub>(-0.2%)</sub> |
+| ↳ *ToMe: Linear (r=10)* | 74.64 <sub>(-2.78)</sub> | -- | 1.46 <sub>(-23.6%)</sub> | 1177.32 <sub>(+9.7%)</sub> | 116.12 <sub>(-48.1%)</sub> | 756.22 <sub>(-5.0%)</sub> | 5.91 <sub>(-5.0%)</sub> | 73.06 <sub>(-12.3%)</sub> |
+| ↳ *ToMe: Linear (r=20)* | 14.87 <sub>(-62.55)</sub> | -- | 1.07 <sub>(-44.0%)</sub> | 1427.14 <sub>(+33.0%)</sub> | 117.21 <sub>(-47.6%)</sub> | 729.46 <sub>(-8.3%)</sub> | 5.70 <sub>(-8.4%)</sub> | 85.30 <sub>(+2.4%)</sub> |
+| ↳ **Ours: Exp.** (r=0.1, α=0.6) | 76.35 <sub>(-1.07)</sub> | -- | 1.61 <sub>(-15.7%)</sub> | 1186.62 <sub>(+10.6%)</sub> | 128.30 <sub>(-42.6%)</sub> | 664.75 <sub>(-16.5%)</sub> | 5.19 <sub>(-16.6%)</sub> | 76.44 <sub>(-8.3%)</sub> |
+| ⭐ **Ours: Exp.** (r=0.25, α=0.0)| **75.95** <sub>(-1.47)</sub> | **--** | **1.49** <sub>(-22.0%)</sub> | **1368.67** <sub>(+27.6%)</sub> | **174.37** <sub>(-22.0%)</sub> | **489.38** <sub>(-38.5%)</sub> | **3.90** <sub>(-37.3%)</sub> | **84.15** <sub>(+1.0%)</sub> |
+| ↳ **Ours: Exp.** (r=0.4, α=0.2) | 69.71 <sub>(-7.71)</sub> | -- | 1.13 <sub>(-40.8%)</sub> | 1886.90 <sub>(+75.9%)</sub> | 147.91 <sub>(-33.8%)</sub> | 391.51 <sub>(-50.8%)</sub> | 3.90 <sub>(-37.3%)</sub> | 88.12 <sub>(+5.8%)</sub> |
+
+- GPU metrics measured on an **NVIDIA RTX 4060 Ti**. 
+- CPU metrics measured on an **Intel Core Ultra 9 285K** (constrained to four threads).
 
 ## Repository Structure
 
