@@ -28,9 +28,9 @@ import platform
 import numpy as np
 import argparse
 
-from SReT import SReT_T_distill
-import SReT_ToMe
-import PiT_ToMe
+from sret.SReT import SReT_T_distill
+import integration.SReT_ToMe as SReT_ToMe
+import integration.PiT_ToMe as PiT_ToMe
 import tome
 import timm
 
@@ -62,6 +62,9 @@ def evaluate(model_name, constant_r=0, linear_r=0, alpha=0, initial_r=0.25):
     # disable MKLDNN entirely to prevent C++ buffer overruns with ToMe
     torch.backends.mkldnn.enabled = False
 
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    sret_weights_path = os.path.join(current_dir, 'weights/SReT_T_distill.pth')
+
     if model_name == "deit":
         model = timm.create_model("deit_tiny_distilled_patch16_224", pretrained=True)
     elif model_name == "deit+tome+c":
@@ -78,19 +81,19 @@ def evaluate(model_name, constant_r=0, linear_r=0, alpha=0, initial_r=0.25):
         model = PiT_ToMe.pit_ti_distilled(pretrained=True, schedule_type="exponential", initial_r=initial_r, alpha=alpha)
     elif model_name == "sret":
         model = SReT_T_distill(pretrained=False)
-        checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+        checkpoint = torch.load(sret_weights_path, map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     elif model_name == "sret+tome+c":
         model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="constant", constant_r=constant_r)
-        checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+        checkpoint = torch.load(sret_weights_path, map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     elif model_name == "sret+tome+l":
         model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="linear", linear_r=linear_r)
-        checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+        checkpoint = torch.load(sret_weights_path, map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     elif model_name == "sret+tome+e":
         model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="exponential", initial_r=initial_r, alpha=alpha)
-        checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+        checkpoint = torch.load(sret_weights_path, map_location='cpu')
         model.load_state_dict(checkpoint['model'])
     else:
         raise ValueError(f"Unknown model: {model_name}")
@@ -139,10 +142,10 @@ def evaluate(model_name, constant_r=0, linear_r=0, alpha=0, initial_r=0.25):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CPU Evaluation Script")
     parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome+c", "pit", "pit+tome+c", "pit+tome+l", "pit+tome+e", "sret", "sret+tome+c", "sret+tome+l", "sret+tome+e"], help="Model selection (default: deit)")
-    parser.add_argument("--constant-r", type=float, default=10, help="Constant token decay rate parameter (default: 10)")
-    parser.add_argument("--linear-r", type=float, default=10, help="Linear token decay rate parameter (default: 10)")
-    parser.add_argument("--initial-r", type=float, default=0.25, help="Exponential token decay rate parameter (default: 0.25)")
-    parser.add_argument("--alpha", type=float, default=0, help="Exponential token decay rate parameter (default: 0)")
+    parser.add_argument("--constant-r", type=float, default=10, help="Constant token reduction rate parameter (default: 10)")
+    parser.add_argument("--linear-r", type=float, default=10, help="Linear token reduction rate parameter (default: 10)")
+    parser.add_argument("--initial-r", type=float, default=0.25, help="Exponential token reduction rate parameter (default: 0.25)")
+    parser.add_argument("--alpha", type=float, default=0, help="Exponential token reduction rate parameter (default: 0)")
     args = parser.parse_args()
 
     arch_val = platform.machine()

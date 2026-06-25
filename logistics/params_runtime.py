@@ -1,7 +1,3 @@
-# ==============================================================================
-# Local Mock Configuration for SReT-ToMe Profiling Integration
-# ==============================================================================
-
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -25,7 +21,9 @@ def get_params():
     )
 
 def get_runtime():
-    """Provides a clean, timestamp-based ID for naming output files."""
+    """
+    Provides a clean, timestamp-based ID for naming output files.
+    """
     return SimpleNamespace(
         execution_id=time.strftime("%Y%m%d_%H%M%S")
     )

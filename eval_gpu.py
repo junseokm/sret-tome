@@ -4,6 +4,7 @@
 # Author: Junseo Kim (UTwente)
 # ==============================================================================
 
+import os
 import gc
 import torch
 import numpy as np
@@ -12,9 +13,9 @@ import torchvision.datasets as datasets
 import argparse
 from thop import profile
 
-from SReT import SReT_T_distill
-import SReT_ToMe
-import PiT_ToMe
+from sret.SReT import SReT_T_distill
+import integration.SReT_ToMe as SReT_ToMe
+import integration.PiT_ToMe as PiT_ToMe
 import tome
 import timm
 
@@ -162,10 +163,11 @@ def evaluate(model, dataset_loader):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GPU Evaluation Script")
     parser.add_argument("model", type=str, default="deit", choices=["deit", "deit+tome+c", "pit", "pit+tome+c", "pit+tome+l", "pit+tome+e", "sret", "sret+tome+c", "sret+tome+l", "sret+tome+e"], help="Model selection (default: deit)")
-    parser.add_argument("--constant-r", type=float, default=10, help="Constant token decay rate parameter (default: 10)")
-    parser.add_argument("--linear-r", type=float, default=10, help="Linear token decay rate parameter (default: 10)")
-    parser.add_argument("--initial-r", type=float, default=0.25, help="Exponential token decay rate parameter (default: 0.25)")
-    parser.add_argument("--alpha", type=float, default=0, help="Exponential token decay rate parameter (default: 0)")
+    parser.add_argument("--constant-r", type=float, default=10, help="Constant token reduction rate parameter (default: 10)")
+    parser.add_argument("--linear-r", type=float, default=10, help="Linear token reduction rate parameter (default: 10)")
+    parser.add_argument("--initial-r", type=float, default=0.25, help="Exponential token reduction rate parameter (default: 0.25)")
+    parser.add_argument("--alpha", type=float, default=0, help="Exponential token reduction rate parameter (default: 0)")
+    parser.add_argument("--data", type=str, default="/media/datasets/imagenet/val", help="Path to ImageNet dataset")
     args = parser.parse_args()
 
     assert torch.cuda.is_available(), "CUDA environment unavailable. This script must execute on a valid GPU."
@@ -174,16 +176,19 @@ if __name__ == "__main__":
     print(f"{'GPU:':<24}{torch.cuda.get_device_name(0)}")
     print("==================================================\n")
 
-    dataset_dir = '/media/datasets/imagenet/val' # ! path to imagenet dataset
+    dataset_dir = args.data
     dataset_transform = transforms.Compose([
         transforms.Resize(256), 
         transforms.CenterCrop(224), 
         transforms.ToTensor(), 
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ]) # ! standard normalization parameters for imagenet models
+    ])
     dataset = datasets.ImageFolder(dataset_dir, transform=dataset_transform)
     dataset_loader = torch.utils.data.DataLoader(dataset, batch_size=128, shuffle=False, num_workers=4, pin_memory=True) # batch size doesn't matter since it's only used for acc evaluations
     
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    sret_weights_path = os.path.join(current_dir, 'weights/SReT_T_distill.pth')
+
     match (args.model):
         case "deit":
             print("--- DeiT Baseline ---")
@@ -226,7 +231,7 @@ if __name__ == "__main__":
         case "sret":
             print("--- SReT Baseline ---")
             model = SReT_T_distill(pretrained=False)
-            checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+            checkpoint = torch.load(sret_weights_path, map_location='cpu')
             model.load_state_dict(checkpoint['model'])
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)
@@ -234,7 +239,7 @@ if __name__ == "__main__":
         case "sret+tome+c":
             print(f"--- SReT + ToMe Constant Reduction Schedule | constant_r = {args.constant_r} ---")
             model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="constant", constant_r=args.constant_r)
-            checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+            checkpoint = torch.load(sret_weights_path, map_location='cpu')
             model.load_state_dict(checkpoint['model'])
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)
@@ -242,7 +247,7 @@ if __name__ == "__main__":
         case "sret+tome+l":
             print(f"--- SReT + ToMe Linear Reduction Schedule | linear_r = {args.linear_r} ---")
             model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="linear", linear_r=args.linear_r)
-            checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+            checkpoint = torch.load(sret_weights_path, map_location='cpu')
             model.load_state_dict(checkpoint['model'])
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)
@@ -250,7 +255,7 @@ if __name__ == "__main__":
         case "sret+tome+e":
             print(f"--- SReT + ToMe Exponential Reduction Schedule | initial_r = {args.initial_r}, alpha = {args.alpha} ---")
             model = SReT_ToMe.SReT_T_distill(pretrained=False, schedule_type="exponential", initial_r=args.initial_r, alpha=args.alpha)
-            checkpoint = torch.load('weights/SReT_T_distill.pth', map_location='cpu')
+            checkpoint = torch.load(sret_weights_path, map_location='cpu')
             model.load_state_dict(checkpoint['model'])
             model = model.cuda().eval()
             _ = evaluate(model, dataset_loader)

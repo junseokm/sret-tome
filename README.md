@@ -19,7 +19,7 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 ## Our Approach
 
 - Overview of the proposed compression approach combining [SReT](https://github.com/szq0214/SReT/tree/main) and [ToMe](https://github.com/facebookresearch/ToMe)<br>
-<img src="figures/teaser.png" alt="Teaser">
+<img src="figures/integration.png" alt="Integration">
 
 - SReT+ToMe Transformer Block<br>
 <img src="figures/sret_tome_block.png" alt="SReT+ToMe Block" width="50%">
@@ -48,38 +48,49 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 ```
 ├── figures/             # Figures
 ├── images/              # Images
+├── integration/         # Integration code (SReT, PiT, ToMe)
 ├── logistics/           # CPU performance snapshot utilities helper
+├── notebooks/           # Jupyter notebooks
 ├── plots/               # Plots               
+├── search/              # Grid search code and results (GPU, CPU)               
+├── sret/                # Original SReT     
 ├── tome/                # Original ToMe     
 ├── utilities/           # CPU performance snapshot utilities           
 ├── weights/             # Pre-trained model weights
-├── PiT_ToMe.py          # PiT+ToMe integration module
-├── SReT_ToMe.py         # SReT+ToMe integration module
-├── SReT.py              # Original SReT 
+|   ...
 ├── eval_cpu.py          # CPU Benchmarking script
 ├── eval_gpu.py          # GPU Benchmarking script
-├── grid_search_cpu.py   # CPU grid search script
-├── grid_search_cpu.csv  # CPU grid search results
-├── grid_search_gpu.py   # GPU grid search script
-├── grid_search_gpu.csv  # GPU grid search results
-├── results.ipynb        # Notebook with evaluation results
-├── visuals.ipynb        # Notebook for token merging visualization
-├── plots.ipynb          # Notebook for plot generation
-├── requirements.txt     # Python requirements
 ├── environment.yml      # Environment
+├── requirements.txt     # Python requirements
 ```
 
-## Setup
+## Dataset Preparation
 
-- Requires the official validation set of the [ImageNet-1K (ILSVRC 2012)](https://www.image-net.org/download.php) dataset.
-- Path variable `dataset_dir` needs to be updated across scripts. 
+All evaluations require the official validation set of the **ImageNet-1K (ILSVRC 2012)** dataset. 
+
+1. Download and extract the validation dataset from the [Official ImageNet Website](https://image-net.org/).
+2. PyTorch expects the validation images to be organized into class-specific subdirectories. Navigate into the extracted validation folder via terminal and run the standard PyTorch formatting script:
+    ```bash
+   wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
+3. Before running `notebooks/results.ipynb`, update the `dataset_dir` (first cell) variable to the local ImageNet directory.
+
+## Pre-trained Models
+
+Download and place the official baseline weights inside the `weights/` directory before running the evaluation scripts:
+
+* **PiT-Tiny-Distilled:** Download from the [Official PiT Repository](https://github.com/naver-ai/pit)
+* **SReT-Tiny-Distilled:** Download from the [Official SReT Repository](https://github.com/szq0214/SReT/tree/main)
+
+>Files must named `pit_ti_distill_746.pth` and `SReT_T_distill.pth` to match the default paths in the evaluation scripts.
+
+## Environment Setup
 
 `conda env create -f environment.yml`<br>
 `conda activate sret-tome-env`<br>
 
 ## Usage
 
-`python <eval_gpu.py | eval_cpu.py> <model_name> [--constant-r <int>] [--linear-r <int>] [--initial-r <float>] [--alpha <float>]`
+`python <eval_gpu.py | eval_cpu.py> <model_name> [--constant-r <int>] [--linear-r <int>] [--initial-r <float>] [--alpha <float>] [--data <str>]`
 * `<eval_gpu.py | eval_cpu.py>`: The execution environment 
 * `<model_name>`: The model to evaluate (`deit`, `deit+tome+c`, `pit`, `pit+tome+c`, `pit+tome+l`, `pit+tome+e`, `sret`, `sret+tome+c`, `sret+tome+l`, `sret+tome+e`)
     - `+c` - constant reduction schedule
@@ -89,6 +100,7 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 * `--linear-r`: Merge rate for linear reduction 
 * `--initial-r`: Merge rate for exponential reduction 
 * `--alpha`: Decay rate for exponential reduction
+* `--data`: Path to ImageNet dataset (only for `eval_gpu.py`)
 
 ## Examples
 
@@ -328,12 +340,17 @@ Throughput:                          85.05 img/sec
 
 ## Code Acknowledgments & Licenses
 
+* CPU Performance Snapshot Utilities: Uraz Odyurt (BSD-3-Clause)
 * ToMe (Token Merging): Meta AI (CC BY-NC 4.0)
 * SReT (Sliced Recursive Transformer): Zhiqiang Shen (MIT)
 * PiT (Pooling-based Vision Transformer): Naver AI (Apache-2.0)
 * DeiT (Data-efficient Image Transformers): Meta AI (Apache-2.0)
 * PyTorch Image Models (timm): Ross Wightman (Apache-2.0)
 * ImageNet-1K (Image Classification Dataset): Stanford Vision Lab (Custom Non-Commercial)
+
+## Acknowledgments
+
+Special thanks to my supervisors, dr. ir. Uraz Odyurt and dr. Amirreza Yousefzadeh, for their guidance throughout this research.
 
 ## Citation
 

@@ -1,2 +1,5 @@
 **/__pycache__/
-performance/
+weights/*.pth
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/
