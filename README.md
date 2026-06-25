@@ -81,7 +81,7 @@ Download and place the official baseline weights inside the `weights/` directory
 * **PiT-Tiny-Distilled:** Download from the [Official PiT Repository](https://github.com/naver-ai/pit)
 * **SReT-Tiny-Distilled:** Download from the [Official SReT Repository](https://github.com/szq0214/SReT/tree/main)
 
->Files must named `pit_ti_distill_746.pth` and `SReT_T_distill.pth` to match the default paths in the evaluation scripts.
+>Files must be named `pit_ti_distill_746.pth` and `SReT_T_distill.pth` to match the default paths in the evaluation scripts.
 
 ## Environment Setup
 
