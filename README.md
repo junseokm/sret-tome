@@ -1,8 +1,9 @@
 # Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers
 
 ![Python 3.10](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
-![PyTorch 2.11](https://img.shields.io/badge/PyTorch-2.11.0-%23EE4C2C?logo=PyTorch&logoColor=white)
 ![CUDA 13.0](https://img.shields.io/badge/CUDA-13.0-76B900?logo=nvidia&logoColor=white)
+![PyTorch 2.11](https://img.shields.io/badge/PyTorch-2.11.0-%23EE4C2C?logo=PyTorch&logoColor=white)
+![Torchvision 0.26.0](https://img.shields.io/badge/Torchvision-0.26.0-%23EE4C2C?logo=PyTorch&logoColor=white)
 ![timm 0.4.12](https://img.shields.io/badge/timm-0.4.12-blue)
 
 >University of Twente TCS Bachelor Research Project
@@ -14,7 +15,7 @@ Implementation of the paper "Combining Recursive Weight-Sharing with Token Mergi
 
 ## Abstract
 
-Vision Transformers (ViTs) demonstrate exceptional performance in computer vision but suffer from large parameter counts and quadratic computational complexity $O(N^2)$, severely limiting their deployment on resource-constrained edge hardware. While recursive weight-sharing reduces parameter counts and token merging mitigates computational and memory bottlenecks, integrating these two paradigms without costly retraining is non-trivial, leaving this intersection largely unexplored. We propose a post-training multi-axis compression approach that successfully combines the recursive weight-sharing of the Sliced Recursive Transformer (SReT) with the dynamic token merging algorithm of Token Merging (ToMe). By implementing an unmerge tracking stack, enforcing strict mathematical merging bounds, and applying parallel spatial tracking, our methodology resolves the spatial and merging constraints of hierarchical, recursive ViTs. Furthermore, we utilize an exponential token reduction schedule to stabilize the semantic densification inherent to recursive loops. Benchmarked on ImageNet-1K, our optimized configuration achieves a 27.6\% increase in throughput and a 38.5\% reduction in Peak Activation Memory (PAM) with a minimal 1.47\% accuracy drop on a GPU at a batch size of 128. However, the algorithmic overhead negated the performance gains at a batch size of 1. Nevertheless, this approach establishes the feasibility of dynamic token reduction within recursive architectures, providing a structural baseline for future edge-targeted optimizations. 
+Vision Transformers (ViTs) demonstrate exceptional performance in computer vision but suffer from large parameter counts and quadratic computational complexity, $\mathcal{O}(N^2)$, severely limiting their deployment on resource-constrained edge hardware. While recursive weight-sharing reduces parameter counts and token merging mitigates computational and memory bottlenecks, integrating these two paradigms without costly retraining is non-trivial, leaving this intersection largely unexplored. We propose a post-training multi-axis compression approach that successfully combines the recursive weight-sharing of the Sliced Recursive Transformer (SReT) with the dynamic token merging algorithm of Token Merging (ToMe). By implementing an unmerge tracking stack, enforcing strict mathematical merging bounds, and applying parallel spatial tracking, our methodology resolves the spatial and merging constraints of the integration. Furthermore, we utilize an exponential token reduction schedule to stabilize the semantic densification inherent to recursive loops. Benchmarked on ImageNet-1K, our optimized configuration achieves a 27.6\% increase in throughput and a 38.5\% reduction in Peak Activation Memory (PAM) with a minimal 1.47\% accuracy drop on a GPU at a batch size of 128. However, the algorithmic overhead negated the performance gains at a batch size of 1. Nevertheless, this approach establishes the feasibility of dynamic token reduction within recursive ViT architectures, providing a structural baseline for future edge-targeted optimizations.
 
 ## Our Approach
 
@@ -26,7 +27,7 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 
 ## Results on ImageNet-1K
 
-| Model Configuration | Acc.<br>(%) | Params<br>(M) | FLOPs<br>(G) | GPU<br>Tput.<br>(img/s)<br>BS=128 | GPU<br>Tput.<br>(img/s)<br>BS=1 | GPU<br>Mem<br>(MB)<br>BS=128 | GPU<br>Mem<br>(MB)<br>BS=1 | CPU<br>Tput.<br>(img/s)<br>BS=1 |
+| Configuration | Acc.<br>(%) | Params.<br>(M) | FLOPs<br>(G) | GPU<br>Tput.<br>(img/s)<br>BS=128 | GPU<br>Tput.<br>(img/s)<br>BS=1 | GPU<br>Mem.<br>(MB)<br>BS=128 | GPU<br>Mem.<br>(MB)<br>BS=1 | CPU<br>Tput.<br>(img/s)<br>BS=1 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Standard ViT** | | | | | | | | |
 | DeiT-Tiny-Distill | 74.40 | 5.91 | 2.17 | 1825.88 | 730.20 | 227.20 | 1.76 | 141.79 |
