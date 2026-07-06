@@ -8,7 +8,7 @@
 
 >University of Twente TCS Bachelor Research Project
 
-Implementation of the paper "Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers" (TScIT 45).
+Implementation of the paper: [Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers]( https://purl.utwente.nl/essays/110754) (TScIT 45).
 
 **Author:** Junseo Kim <br>
 **Supervised by:** dr. ir. Uraz Odyurt & dr. Amirreza Yousefzadeh<br>
@@ -356,10 +356,14 @@ Special thanks to my supervisors, dr. ir. Uraz Odyurt and dr. Amirreza Yousefzad
 ## Citation
 
 ```
-@inproceedings{kim2026,
-    title={Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers},
-    author={Kim, Junseo},
-    booktitle={Proceedings of the 45th Twente Student Conference on IT (TScIT)},
-    year={2026}
+@mastersthesis{Kim2026,
+    month = {July},
+    author = {Kim, Junseo},
+    year= {2026},
+    school= {University of Twente},
+    address= {Enschede},
+    type= {Thesis},
+    title= {Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers},
+    url= {https://purl.utwente.nl/essays/110754}
 }
 ```
