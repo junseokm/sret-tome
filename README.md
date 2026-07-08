@@ -35,7 +35,7 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 | SReT-Tiny-Distill | 77.42 | 4.76 | 1.91 | 1072.86 | 795.76 |
 | ↳ *ToMe: Constant<br>(r=10)* | 71.01 <sub>(-6.41)</sub> | -- | 1.32 <sub>(-30.9%)</sub> | 1176.27 <sub>(+9.6%)</sub> | 769.79 <sub>(-3.3%)</sub> |
 | ↳ *ToMe: Linear<br>(r=10)* | 74.64 <sub>(-2.78)</sub> | -- | 1.46 <sub>(-23.6%)</sub> | 1177.32 <sub>(+9.7%)</sub> | 756.22 <sub>(-5.0%)</sub> | 
-| ↳ **ToMe: Exponential<br>(r=0.25, α=0.0)** | **75.95** <sub>(-1.47)</sub> | **--** | **1.49** <sub>(-22.0%)</sub> | **1368.67.37** <sub>(+27.6%)</sub> | **489.38** <sub>(-38.5%)</sub> |
+| ↳ **ToMe: Exponential<br>(r=0.25, α=0.0)** | **75.95** <sub>(-1.47)</sub> | **--** | **1.49** <sub>(-22.0%)</sub> | **1368.67** <sub>(+27.6%)</sub> | **489.38** <sub>(-38.5%)</sub> |
 
 - GPU metrics measured on an **NVIDIA RTX 4060 Ti**. 
 - CPU metrics measured on an **Intel Core Ultra 9 285K** (constrained to four threads).
