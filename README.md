@@ -27,15 +27,15 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 
 ## Results on ImageNet-1K
 
-| Configuration | Acc.<br>(%) | Params.<br>(M) | FLOPs<br>(G) | GPU<br>Tput.<br>(img/s)<br>BS=128 | GPU<br>Tput.<br>(img/s)<br>BS=1 | GPU<br>Mem.<br>(MB)<br>BS=128 | GPU<br>Mem.<br>(MB)<br>BS=1 | CPU<br>Tput.<br>(img/s)<br>BS=1 |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Standard ViT** | | | | | | | | |
-| DeiT-Tiny-Distill | 74.40 | 5.91 | 2.17 | 1825.88 | 730.20 | 227.20 | 1.76 | 141.79 |
-| **Recursive ViT** | | | | | | | | |
-| SReT-Tiny-Distill | 77.42 | 4.76 | 1.91 | 1072.86 | 223.58 | 795.76 | 6.22 | 83.32 |
-| ↳ *ToMe: Constant<br>(r=10)* | 71.01 <sub>(-6.41)</sub> | -- | 1.32 <sub>(-30.9%)</sub> | 1176.27 <sub>(+9.6%)</sub> | 110.24 <sub>(-50.7%)</sub> | 769.79 <sub>(-3.3%)</sub> | 6.01 <sub>(-3.4%)</sub> | 75.97 <sub>(-8.8%)</sub> |
-| ↳ *ToMe: Linear<br>(r=10)* | 74.64 <sub>(-2.78)</sub> | -- | 1.46 <sub>(-23.6%)</sub> | 1177.32 <sub>(+9.7%)</sub> | 116.12 <sub>(-48.1%)</sub> | 756.22 <sub>(-5.0%)</sub> | 5.91 <sub>(-5.0%)</sub> | 73.06 <sub>(-12.3%)</sub> |
-| ↳ **ToMe: Exp.<br>(r=0.25, α=0.0)** | **75.95** <sub>(-1.47)</sub> | **--** | **1.49** <sub>(-22.0%)</sub> | **1368.67** <sub>(+27.6%)</sub> | **174.37** <sub>(-22.0%)</sub> | **489.38** <sub>(-38.5%)</sub> | **3.90** <sub>(-37.3%)</sub> | **84.15** <sub>(+1.0%)</sub> |
+| Model | Acc.<br>(%) | Params.<br>(M) | FLOPs<br>(G) | GPU Throughput<br>(img/s)<br>BS=128 | GPU Peak Memory<br>(MB)<br>BS=128 |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Standard ViT** | | | | | | 
+| DeiT-Tiny-Distill | 74.40 | 5.91 | 2.17 | 1825.88 | 227.20 |
+| **Recursive ViT** | | | | | | 
+| SReT-Tiny-Distill | 77.42 | 4.76 | 1.91 | 1072.86 | 795.76 |
+| ↳ *ToMe: Constant<br>(r=10)* | 71.01 <sub>(-6.41)</sub> | -- | 1.32 <sub>(-30.9%)</sub> | 1176.27 <sub>(+9.6%)</sub> | 769.79 <sub>(-3.3%)</sub> |
+| ↳ *ToMe: Linear<br>(r=10)* | 74.64 <sub>(-2.78)</sub> | -- | 1.46 <sub>(-23.6%)</sub> | 1177.32 <sub>(+9.7%)</sub> | 756.22 <sub>(-5.0%)</sub> | 
+| ↳ **ToMe: Exponential<br>(r=0.25, α=0.0)** | **75.95** <sub>(-1.47)</sub> | **--** | **1.49** <sub>(-22.0%)</sub> | **1368.67.37** <sub>(+27.6%)</sub> | **489.38** <sub>(-38.5%)</sub> |
 
 - GPU metrics measured on an **NVIDIA RTX 4060 Ti**. 
 - CPU metrics measured on an **Intel Core Ultra 9 285K** (constrained to four threads).
