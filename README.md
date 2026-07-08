@@ -6,7 +6,7 @@
 ![Torchvision 0.26.0](https://img.shields.io/badge/Torchvision-0.26.0-%23EE4C2C?logo=PyTorch&logoColor=white)
 ![timm 0.4.12](https://img.shields.io/badge/timm-0.4.12-blue)
 
->University of Twente TCS Bachelor Research Project
+>University of Twente TCS Bachelor Thesis
 
 Implementation of the paper: [Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers]( https://purl.utwente.nl/essays/110754) (TScIT 45).
 
@@ -38,7 +38,6 @@ Vision Transformers (ViTs) demonstrate exceptional performance in computer visio
 | ↳ **ToMe: Exponential<br>(r=0.25, α=0.0)** | **75.95** <sub>(-1.47)</sub> | **--** | **1.49** <sub>(-22.0%)</sub> | **1368.67** <sub>(+27.6%)</sub> | **489.38** <sub>(-38.5%)</sub> |
 
 - GPU metrics measured on an **NVIDIA RTX 4060 Ti**. 
-- CPU metrics measured on an **Intel Core Ultra 9 285K** (constrained to four threads).
 
 ## Repository Structure
 
