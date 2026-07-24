@@ -6,7 +6,7 @@
 ![Torchvision 0.26.0](https://img.shields.io/badge/Torchvision-0.26.0-%23EE4C2C?logo=PyTorch&logoColor=white)
 ![timm 0.4.12](https://img.shields.io/badge/timm-0.4.12-blue)
 
->University of Twente TCS Bachelor Thesis
+>University of Twente Bachelor Thesis
 
 Implementation of the paper: [Combining Recursive Weight-Sharing with Token Merging for Edge Vision Transformers]( https://purl.utwente.nl/essays/110754) (TScIT 45).
 
