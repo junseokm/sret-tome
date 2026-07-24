@@ -31,9 +31,9 @@ def evaluate(model, dataset_loader):
         dict: a dictionary of name and values of the evaluated metrics.
     """
     
-    model.eval() # set to evaluation mode
+    model.eval() # set to evaluation modeS
     torch.backends.cudnn.benchmark = True  # optimize GPU execution kernels
-    bss = [128, 64, 32, 16, 1] # batch sizes
+    bss = [128, 64, 32, 16, 8, 4, 2, 1] # batch sizes
     
    # ! peak activation memory
     pams = []
@@ -151,12 +151,18 @@ def evaluate(model, dataset_loader):
         "throughput_bs64": tps[1],   
         "throughput_bs32": tps[2],   
         "throughput_bs16": tps[3],   
-        "throughput_bs1": tps[4],    
+        "throughput_bs8": tps[4],   
+        "throughput_bs4": tps[5],   
+        "throughput_bs2": tps[6],   
+        "throughput_bs1": tps[7],    
         "activation_mem_bs128": pams[0],
         "activation_mem_bs64": pams[1],
         "activation_mem_bs32": pams[2],
         "activation_mem_bs16": pams[3],
-        "activation_mem_bs1": pams[4],
+        "activation_mem_bs8": pams[4],
+        "activation_mem_bs4": pams[5],
+        "activation_mem_bs2": pams[6],
+        "activation_mem_bs1": pams[7],
     }
 
 

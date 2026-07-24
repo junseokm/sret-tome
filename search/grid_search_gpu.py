@@ -42,9 +42,9 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
     columns = [
         "initial_r", "alpha", "accuracy", "params_M", "flops_G",
         "throughput_bs128", "throughput_bs64", "throughput_bs32", 
-        "throughput_bs16", "throughput_bs1", 
+        "throughput_bs16", "throughput_bs8", "throughput_bs4", "throughput_bs2", "throughput_bs1", 
         "activation_mem_bs128", "activation_mem_bs64", "activation_mem_bs32",
-        "activation_mem_bs16", "activation_mem_bs1"
+        "activation_mem_bs16", "activation_mem_bs8", "activation_mem_bs4", "activation_mem_bs2", "activation_mem_bs1"
     ]
     
     with open(csv_path, mode="w", newline="") as f:
@@ -63,9 +63,9 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
         csv.writer(f).writerow([
             0.0, 1.0, base_metrics["accuracy"], base_metrics["params_M"], base_metrics["flops_G"],
             base_metrics["throughput_bs128"], base_metrics["throughput_bs64"], base_metrics["throughput_bs32"],
-            base_metrics["throughput_bs16"], base_metrics["throughput_bs1"], 
+            base_metrics["throughput_bs16"], base_metrics["throughput_bs8"], base_metrics["throughput_bs4"], base_metrics["throughput_bs2"], base_metrics["throughput_bs1"],
             base_metrics["activation_mem_bs128"], base_metrics["activation_mem_bs64"], base_metrics["activation_mem_bs32"],
-            base_metrics["activation_mem_bs16"], base_metrics["activation_mem_bs1"]
+            base_metrics["activation_mem_bs16"], base_metrics["activation_mem_bs8"], base_metrics["activation_mem_bs4"], base_metrics["activation_mem_bs2"], base_metrics["activation_mem_bs1"]
         ])
     
     # clear variable and refresh garbage collector and cache
@@ -92,9 +92,9 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
                 writer.writerow([
                     initial_r, alpha, res["accuracy"], res["params_M"], res["flops_G"],
                     res["throughput_bs128"], res["throughput_bs64"], res["throughput_bs32"],
-                    res["throughput_bs16"], res["throughput_bs1"], 
+                    res["throughput_bs16"], res["throughput_bs8"], res["throughput_bs4"], res["throughput_bs2"], res["throughput_bs1"], 
                     res["activation_mem_bs128"], res["activation_mem_bs64"], res["activation_mem_bs32"], 
-                    res["activation_mem_bs16"], res["activation_mem_bs1"]  
+                    res["activation_mem_bs16"], res["activation_mem_bs8"], res["activation_mem_bs4"], res["activation_mem_bs2"], res["activation_mem_bs1"]  
                 ])
                 
             print(f"-- Success! Trial {idx + 1} logged.")
@@ -107,7 +107,9 @@ def grid_search(dataset_loader, csv_path="grid_search_gpu.csv"):
                 writer.writerow([
                     initial_r, alpha, "FAILED", "FAILED", "FAILED",
                     "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", 
-                    "FAILED", "FAILED", "FAILED", "FAILED", "FAILED"
+                    "FAILED", "FAILED", "FAILED", "FAILED", "FAILED",
+                    "FAILED", "FAILED", "FAILED", "FAILED", "FAILED",
+                    "FAILED"
                 ])
             
         finally:
